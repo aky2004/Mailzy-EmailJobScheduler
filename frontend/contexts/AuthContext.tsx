@@ -26,11 +26,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [dbUser, setDbUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDbUser = useCallback(async () => {
+  const fetchDbUser = useCallback(async (user?: FirebaseUser | null) => {
+    const currentUser = user ?? auth.currentUser;
+    if (!currentUser) {
+      setDbUser(null);
+      return;
+    }
     try {
+      await currentUser.getIdToken();
       const user = await authApi.getMe();
       setDbUser(user);
-    } catch {
+    } catch (err) {
+      console.warn('Backend user sync:', err);
       setDbUser(null);
     }
   }, []);
@@ -39,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
-        await fetchDbUser();
+        await fetchDbUser(user);
       } else {
         setDbUser(null);
       }
