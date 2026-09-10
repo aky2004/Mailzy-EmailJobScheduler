@@ -13,7 +13,8 @@ import type {
   CampaignDetail,
 } from './types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const RAW_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const BASE_URL = RAW_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
