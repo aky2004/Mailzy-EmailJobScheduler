@@ -65,7 +65,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/senders', senderRoutes);
 
 // 404 handler
-app.use((_req, res) => {
+app.use((_req: express.Request, res: express.Response) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
