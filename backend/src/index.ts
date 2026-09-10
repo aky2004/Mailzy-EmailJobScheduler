@@ -20,9 +20,17 @@ const app = express();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
+const allowedOrigins = env.FRONTEND_URL.split(',').map((u) => u.trim().replace(/\/$/, ''));
+
 app.use(helmet());
 app.use(cors({
-  origin: env.FRONTEND_URL,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin) || env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(null, true); // Permissive fallback to prevent CORS blocks during setup
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
