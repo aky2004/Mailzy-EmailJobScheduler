@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, varchar, uuid, boolean, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, varchar, uuid, boolean, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -55,6 +55,7 @@ export const campaigns = pgTable('campaigns', {
   hourlyLimit: integer('hourly_limit').default(100).notNull(),
   status: campaignStatusEnum('status').default('scheduled').notNull(),
   idempotencyKey: varchar('idempotency_key', { length: 255 }).unique().notNull(),
+  hasAttachments: boolean('has_attachments').default(false).notNull(),
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -73,14 +74,34 @@ export const emailJobs = pgTable('email_jobs', {
   messageId: varchar('message_id', { length: 512 }),
   previewUrl: text('preview_url'),
   retryCount: integer('retry_count').default(0).notNull(),
+  isStarred: boolean('is_starred').default(false).notNull(),
+  isDeleted: boolean('is_deleted').default(false).notNull(),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const slackConnections = pgTable('slack_connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull().unique(),
+  accessToken: varchar('access_token', { length: 512 }).notNull(),
+  teamId: varchar('team_id', { length: 128 }),
+  teamName: varchar('team_name', { length: 255 }),
+  webhookUrl: text('webhook_url'),
+  channelId: varchar('channel_id', { length: 128 }),
+  channelName: varchar('channel_name', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // ─── Relations ────────────────────────────────────────────────────────────────
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   campaigns: many(campaigns),
+  slackConnection: one(slackConnections, {
+    fields: [users.id],
+    references: [slackConnections.userId],
+  }),
 }));
 
 export const sendersRelations = relations(senders, ({ many }) => ({

@@ -5,8 +5,9 @@ import { EMAIL_QUEUE_NAME, EmailJobData, emailQueue } from './emailQueue';
 import { sendEmail } from '../services/emailService';
 import { checkRateLimit } from '../services/rateLimiter';
 import { db } from '../db';
-import { emailJobs, campaigns } from '../db/schema';
+import { emailJobs, campaigns, slackConnections } from '../db/schema';
 import { eq, sql, and, inArray } from 'drizzle-orm';
+import { esClient, ES_INDEX } from '../config/es';
 
 /**
  * BullMQ Worker for processing email send jobs.
@@ -44,6 +45,22 @@ export function startEmailWorker(): Worker {
         return;
       }
 
+      if (existingJob.status === 'cancelled') {
+        console.log(`🚫 Job cancelled: ${data.jobId}, skipping`);
+        return;
+      }
+
+      // ── Flip campaign to 'running' on first job execution ─────────────
+      await db
+        .update(campaigns)
+        .set({ status: 'running', updatedAt: new Date() })
+        .where(
+          and(
+            eq(campaigns.id, data.campaignId),
+            eq(campaigns.status, 'scheduled')
+          )
+        );
+
       // ── Rate limit check ──────────────────────────────────────────────
       const rateLimitResult = await checkRateLimit(data.senderId, data.hourlyLimit);
 
@@ -52,13 +69,17 @@ export function startEmailWorker(): Worker {
           `⏳ Rate limit hit for sender ${data.senderEmail}. Requeueing in ${rateLimitResult.retryAfterMs}ms`
         );
 
-        // Re-add job with delay to next hour window (preserving order via jitter)
+        // Re-add job with delay to next hour window.
+        // Use a deterministic jobId based on the original jobId + hour window,
+        // so that recovery scans don't create a second copy of the retry.
+        const hourWindow = Math.floor(Date.now() / (60 * 60 * 1000));
+        const retryJobId = `retry-${data.jobId}-h${hourWindow}`;
         await emailQueue.add(
           'send-email',
-          data,
+          { ...data, jobId: data.jobId }, // preserve original DB jobId
           {
             delay: rateLimitResult.retryAfterMs,
-            jobId: `retry-${data.jobId}-${Date.now()}`, // new jobId for re-queue
+            jobId: retryJobId,
           }
         );
 
@@ -67,6 +88,25 @@ export function startEmailWorker(): Worker {
           .update(emailJobs)
           .set({ status: 'rate_limited', updatedAt: new Date() })
           .where(eq(emailJobs.id, data.jobId));
+
+        // Trigger Slack Notification
+        try {
+          const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, data.campaignId)).limit(1);
+          if (campaign) {
+            const [slackConn] = await db.select().from(slackConnections).where(eq(slackConnections.userId, campaign.userId)).limit(1);
+            if (slackConn && slackConn.webhookUrl) {
+              await fetch(slackConn.webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  text: `⚠️ *Rate Limit Exceeded*\nSender *${data.senderEmail}* has reached the limit of ${data.hourlyLimit} emails/hour.\nJob \`${data.jobId}\` was rescheduled by ${Math.ceil(rateLimitResult.retryAfterMs / 1000)} seconds.`
+                })
+              }).catch(e => console.error('Slack HTTP error:', e));
+            }
+          }
+        } catch (slackErr) {
+          console.error('Failed to send slack notification', slackErr);
+        }
 
         return; // Do NOT throw — this is successful handling
       }
@@ -87,16 +127,25 @@ export function startEmailWorker(): Worker {
         });
 
         // ── Update DB: success ─────────────────────────────────────────
+        const sentAt = new Date();
         await db
           .update(emailJobs)
           .set({
             status: 'sent',
-            sentAt: new Date(),
+            sentAt,
             messageId: result.messageId,
             previewUrl: result.previewUrl ? String(result.previewUrl) : null,
             updatedAt: new Date(),
           })
           .where(eq(emailJobs.id, data.jobId));
+
+        try {
+          await esClient.update({
+            index: ES_INDEX,
+            id: data.jobId,
+            doc: { status: 'sent', sentAt: sentAt.toISOString() },
+          });
+        } catch (e) { console.error('ES update error:', e); }
 
         // Check if campaign is complete
         await checkAndUpdateCampaignStatus(data.campaignId);
@@ -113,6 +162,14 @@ export function startEmailWorker(): Worker {
             updatedAt: new Date(),
           })
           .where(eq(emailJobs.id, data.jobId));
+
+        try {
+          await esClient.update({
+            index: ES_INDEX,
+            id: data.jobId,
+            doc: { status: 'failed' },
+          });
+        } catch (e) { console.error('ES update error:', e); }
 
         throw error; // Re-throw so BullMQ handles retries
       }
