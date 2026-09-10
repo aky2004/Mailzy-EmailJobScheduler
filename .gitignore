@@ -1,0 +1,40 @@
+# ─── OS ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Node ────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Environment Variables (NEVER commit these) ───────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# ─── Build Outputs ───────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+
+# ─── TypeScript ──────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Database ────────────────────────────────────────────────────
+*.sqlite
+*.db
+
+# ─── Logs ────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ─── IDE ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
