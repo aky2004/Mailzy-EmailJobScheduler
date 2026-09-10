@@ -30,13 +30,20 @@ declare global {
  */
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
+  let idToken = '';
 
-  if (!authHeader?.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
+    idToken = authHeader.split('Bearer ')[1];
+  } else if (req.query.token && typeof req.query.token === 'string') {
+    idToken = req.query.token;
+  } else if (req.query.state && typeof req.query.state === 'string') {
+    idToken = req.query.state;
+  }
+
+  if (!idToken) {
     res.status(401).json({ error: 'Missing or invalid Authorization header' });
     return;
   }
-
-  const idToken = authHeader.split('Bearer ')[1];
 
   try {
     const decoded = await verifyIdToken(idToken);

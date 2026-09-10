@@ -3,6 +3,7 @@ import { db } from '../db';
 import { emailJobs, campaigns, senders } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { esClient, ES_INDEX } from '../config/es';
 
 export interface Recipient {
   email: string;
@@ -40,16 +41,16 @@ export async function scheduleCampaign(opts: ScheduleCampaignOptions): Promise<v
   const now = Date.now();
   const scheduledAtMs = scheduledAt.getTime();
 
-  // Update campaign status to running
+  // Mark campaign as scheduled (worker will flip it to 'running' when first job fires)
   await db.update(campaigns)
-    .set({ status: 'running', updatedAt: new Date() })
+    .set({ status: 'scheduled', updatedAt: new Date() })
     .where(eq(campaigns.id, campaignId));
 
   for (let i = 0; i < recipients.length; i++) {
     const recipient = recipients[i];
     const fireAt = scheduledAtMs + i * delayBetweenMs;
     const delay = Math.max(0, fireAt - now);
-    const bullJobId = `campaign_${campaignId}_recipient_${recipient.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const bullJobId = `campaign_${campaignId}_recipient_${recipient.email.replace(/[^a-zA-Z0-9]/g, '_')}_${i}`;
 
     // Create DB record for this job
     const dbJobId = uuidv4();
@@ -86,6 +87,26 @@ export async function scheduleCampaign(opts: ScheduleCampaignOptions): Promise<v
       delay,
       jobId: bullJobId, // Idempotent: BullMQ deduplicates by jobId
     });
+
+    // Index into Elasticsearch
+    try {
+      await esClient.index({
+        index: ES_INDEX,
+        id: dbJobId,
+        document: {
+          id: dbJobId,
+          campaignId,
+          subject,
+          body,
+          recipientEmail: recipient.email,
+          senderEmail: sender.email,
+          status: 'pending',
+          scheduledAt: new Date(fireAt).toISOString(),
+        },
+      });
+    } catch (esErr) {
+      console.error(`❌ ES Indexing failed for job ${dbJobId}:`, esErr);
+    }
   }
 
   console.log(

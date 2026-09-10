@@ -8,13 +8,17 @@ import { env } from './config/env';
 import { testDbConnection } from './db';
 import { getFirebaseAdmin } from './config/firebase';
 import { getRedis } from './config/redis';
+import { initElasticsearch } from './config/es';
 import { startEmailWorker } from './jobs/emailWorker';
+import { recoverPendingJobs } from './services/recoveryService';
 
 // Routes
 import authRoutes from './routes/auth';
 import campaignRoutes from './routes/campaigns';
 import jobRoutes from './routes/jobs';
 import senderRoutes from './routes/senders';
+import searchRoutes from './routes/search';
+import slackRoutes from './routes/slack';
 
 const app = express();
 
@@ -71,6 +75,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/senders', senderRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/slack', slackRoutes);
 
 // 404 handler
 app.use((_req: express.Request, res: express.Response) => {
@@ -99,6 +105,13 @@ async function bootstrap() {
 
     // Start BullMQ worker
     startEmailWorker();
+
+    // Initialize Elasticsearch
+    await initElasticsearch();
+
+    // Re-sync any pending DB jobs into BullMQ (handles Redis wipe / server restart)
+    // This is NOT a cron job — runs exactly once at startup.
+    await recoverPendingJobs();
 
     // Start server
     app.listen(env.PORT, () => {

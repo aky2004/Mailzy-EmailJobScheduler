@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { db } from '../db';
 import { emailJobs, campaigns, senders } from '../db/schema';
-import { eq, desc, inArray, sql, and, ne } from 'drizzle-orm';
+import { eq, desc, inArray, sql, and } from 'drizzle-orm';
 import { getQueueStats } from '../jobs/emailQueue';
 
 const router = Router();
@@ -37,11 +37,14 @@ router.get('/scheduled', authenticate, async (req: Request, res: Response) => {
         recipientName: emailJobs.recipientName,
         status: emailJobs.status,
         scheduledAt: emailJobs.scheduledAt,
-        createdAt: emailJobs.createdAt,
         campaignSubject: campaigns.subject,
         campaignId: campaigns.id,
-        senderEmail: senders.email,
         senderName: senders.name,
+        senderEmail: senders.email,
+        isStarred: emailJobs.isStarred,
+        isDeleted: emailJobs.isDeleted,
+        isRead: emailJobs.isRead,
+        hasAttachments: campaigns.hasAttachments,
       })
       .from(emailJobs)
       .leftJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
@@ -107,11 +110,14 @@ router.get('/sent', authenticate, async (req: Request, res: Response) => {
         sentAt: emailJobs.sentAt,
         previewUrl: emailJobs.previewUrl,
         errorMessage: emailJobs.errorMessage,
-        messageId: emailJobs.messageId,
         campaignSubject: campaigns.subject,
         campaignId: campaigns.id,
-        senderEmail: senders.email,
         senderName: senders.name,
+        senderEmail: senders.email,
+        isStarred: emailJobs.isStarred,
+        isDeleted: emailJobs.isDeleted,
+        isRead: emailJobs.isRead,
+        hasAttachments: campaigns.hasAttachments,
       })
       .from(emailJobs)
       .leftJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
@@ -157,6 +163,74 @@ router.get('/stats', authenticate, async (_req: Request, res: Response) => {
   } catch (error) {
     console.error('Get queue stats error:', error);
     res.status(500).json({ error: 'Failed to fetch queue stats' });
+  }
+});
+
+/**
+ * PATCH /api/jobs/:id/state
+ * Update UI states (isStarred, isDeleted, isRead)
+ */
+router.patch('/:id/state', authenticate, async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const { isStarred, isDeleted, isRead } = req.body;
+
+  try {
+    // Only allow updating jobs that belong to the user's campaigns
+    const [job] = await db
+      .select({ id: emailJobs.id })
+      .from(emailJobs)
+      .leftJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
+      .where(and(eq(emailJobs.id, id), eq(campaigns.userId, req.user!.dbId)))
+      .limit(1);
+
+    if (!job) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    const updates: any = {};
+    if (typeof isStarred === 'boolean') updates.isStarred = isStarred;
+    if (typeof isDeleted === 'boolean') updates.isDeleted = isDeleted;
+    if (typeof isRead === 'boolean') updates.isRead = isRead;
+
+    if (Object.keys(updates).length > 0) {
+      await db.update(emailJobs).set(updates).where(eq(emailJobs.id, id));
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update job state error:', error);
+    res.status(500).json({ error: 'Failed to update job state' });
+  }
+});
+
+/**
+ * DELETE /api/jobs/:id
+ * Permanently delete an email job
+ */
+router.delete('/:id', authenticate, async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+
+  try {
+    // Only allow deleting jobs that belong to the user's campaigns
+    const [job] = await db
+      .select({ id: emailJobs.id })
+      .from(emailJobs)
+      .leftJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
+      .where(and(eq(emailJobs.id, id), eq(campaigns.userId, req.user!.dbId)))
+      .limit(1);
+
+    if (!job) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    await db.delete(emailJobs).where(eq(emailJobs.id, id));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete job error:', error);
+    res.status(500).json({ error: 'Failed to delete job' });
   }
 });
 

@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { db } from '../db';
-import { senders } from '../db/schema';
+import { eq, ne } from 'drizzle-orm';
+import { senders, campaigns } from '../db/schema';
 import { createDefaultEtherealAccount } from '../services/emailService';
 import { z } from 'zod';
 
@@ -69,6 +70,37 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     res.status(201).json({ sender });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errMsg });
+  }
+});
+
+/**
+ * DELETE /api/senders/:id
+ * Delete a configured sender. Reassigns campaigns to another sender if needed.
+ */
+router.delete('/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id);
+    const [sender] = await db.select().from(senders).where(eq(senders.id, id)).limit(1);
+    if (!sender) {
+      res.status(404).json({ error: 'Sender not found' });
+      return;
+    }
+
+    // Reassign existing campaigns pointing to this sender to another active sender if available
+    const otherSenders = await db.select().from(senders).where(ne(senders.id, id)).limit(1);
+    if (otherSenders.length > 0) {
+      await db
+        .update(campaigns)
+        .set({ senderId: otherSenders[0].id })
+        .where(eq(campaigns.senderId, id));
+    }
+
+    await db.delete(senders).where(eq(senders.id, id));
+    res.json({ message: 'Sender deleted successfully', id });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error deleting sender:', error);
     res.status(500).json({ error: errMsg });
   }
 });

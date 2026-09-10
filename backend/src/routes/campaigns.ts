@@ -20,6 +20,7 @@ const createCampaignSchema = z.object({
   scheduledAt: z.string().datetime(),
   delayBetweenMs: z.number().min(0).max(3600000).default(2000),
   hourlyLimit: z.number().min(1).max(1000).default(100),
+  hasAttachments: z.boolean().default(false),
 });
 
 /**
@@ -33,7 +34,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     return;
   }
 
-  const { senderId, subject, body, recipients, scheduledAt, delayBetweenMs, hourlyLimit } = parsed.data;
+  const { senderId, subject, body, recipients, scheduledAt, delayBetweenMs, hourlyLimit, hasAttachments } = parsed.data;
 
   try {
     // Validate sender exists
@@ -56,6 +57,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       delayBetweenMs,
       hourlyLimit,
       status: 'scheduled',
+      hasAttachments,
       idempotencyKey,
     }).returning();
 
