@@ -24,10 +24,12 @@ interface SendEmailResult {
  * Returns messageId and Ethereal preview URL.
  */
 export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
+  const port = opts.smtpPort ?? env.ETHEREAL_SMTP_PORT;
+  const host = opts.smtpHost ?? env.ETHEREAL_SMTP_HOST;
   const transport = nodemailer.createTransport({
-    host: opts.smtpHost ?? env.ETHEREAL_SMTP_HOST,
-    port: opts.smtpPort ?? env.ETHEREAL_SMTP_PORT,
-    secure: false,
+    host,
+    port,
+    secure: port === 465,
     auth: {
       user: opts.smtpUser,
       pass: opts.smtpPass,
