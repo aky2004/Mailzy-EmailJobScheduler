@@ -6,7 +6,7 @@ import { sendEmail } from '../services/emailService';
 import { checkRateLimit } from '../services/rateLimiter';
 import { db } from '../db';
 import { emailJobs, campaigns } from '../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and, inArray } from 'drizzle-orm';
 
 /**
  * BullMQ Worker for processing email send jobs.
@@ -160,30 +160,18 @@ async function checkAndUpdateCampaignStatus(campaignId: string): Promise<void> {
 
   if (!campaign) return;
 
-  const pendingCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(emailJobs)
-    .where(
-      eq(emailJobs.campaignId, campaignId)
-    )
-    .then((rows) => Number(rows[0]?.count ?? 0));
-
-  const sentCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(emailJobs)
-    .where(
-      eq(emailJobs.campaignId, campaignId)
-    )
-    .then((rows) => Number(rows[0]?.count ?? 0));
-
-  // Simple check: if all jobs are no longer 'pending'
   const stillPending = await db
     .select({ count: sql<number>`count(*)` })
     .from(emailJobs)
-    .where(eq(emailJobs.campaignId, campaignId))
+    .where(
+      and(
+        eq(emailJobs.campaignId, campaignId),
+        inArray(emailJobs.status, ['pending', 'rate_limited'])
+      )
+    )
     .then((rows) => Number(rows[0]?.count ?? 0));
 
-  if (stillPending === 0 && campaign.status === 'running') {
+  if (stillPending === 0 && (campaign.status === 'running' || campaign.status === 'scheduled')) {
     await db
       .update(campaigns)
       .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
