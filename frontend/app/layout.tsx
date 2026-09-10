@@ -7,9 +7,9 @@ import { Toaster } from 'react-hot-toast';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'ReachInbox – Email Scheduler',
+  title: 'mailZy – Email Scheduler',
   description: 'Production-grade email scheduler with BullMQ and Ethereal SMTP. Schedule, monitor, and track email campaigns at scale.',
-  keywords: ['email scheduler', 'BullMQ', 'ReachInbox', 'cold email', 'outreach'],
+  keywords: ['email scheduler', 'BullMQ', 'mailZy', 'cold email', 'outreach'],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -36,7 +36,7 @@ router.get('/callback', authenticate, async (req, res) => {
     let tokenData: any = {
       ok: true,
       access_token: 'xoxb-mock-token-for-demo',
-      team: { id: 'T123MOCK', name: 'ReachInbox Alerts' },
+      team: { id: 'T123MOCK', name: 'mailZy Alerts' },
       incoming_webhook: { channel_id: 'C123MOCK', channel: '#email-alerts', url: 'https://hooks.slack.com/services/mock' }
     };
 
@@ -144,7 +144,7 @@ router.post('/test', authenticate, async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: `🟢 *ReachInbox Slack Integration Verified*\nRate limit alerts and scheduler notifications are active for channel *${conn.channelName || '#general'}*.`
+        text: `🟢 *mailZy Slack Integration Verified*\nRate limit alerts and scheduler notifications are active for channel *${conn.channelName || '#general'}*.`
       })
     });
 

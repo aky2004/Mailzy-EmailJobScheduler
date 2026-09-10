@@ -46,6 +46,10 @@ export interface EmailJob {
   sentAt?: string;
   previewUrl?: string;
   errorMessage?: string;
+  isStarred?: boolean;
+  isDeleted?: boolean;
+  isRead?: boolean;
+  hasAttachments?: boolean;
   messageId?: string;
   campaignSubject?: string;
   campaignId: string;
@@ -98,6 +102,7 @@ export interface CreateCampaignPayload {
   scheduledAt: string;
   delayBetweenMs: number;
   hourlyLimit: number;
+  hasAttachments?: boolean;
 }
 
 export interface CreateSenderPayload {

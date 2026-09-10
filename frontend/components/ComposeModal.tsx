@@ -1,19 +1,23 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { X, Upload, Users, Clock, Mail, FileText, ChevronRight, ChevronLeft, Loader2, Plus } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { 
+  X, Loader2, Bold, Italic, Underline, Strikethrough, 
+  List, ListOrdered, Link, Code, Calendar, Send, CloudUpload,
+  ChevronDown, Paperclip, Mail, RotateCcw
+} from 'lucide-react';
 import type { Sender, CreateCampaignPayload, Recipient } from '@/lib/types';
-import { campaignsApi, sendersApi } from '@/lib/api';
+import { campaignsApi } from '@/lib/api';
 import Papa from 'papaparse';
 import toast from 'react-hot-toast';
+
+const DRAFT_STORAGE_KEY = 'mailzy_compose_draft';
 
 interface ComposeModalProps {
   senders: Sender[];
   onClose: () => void;
   onSuccess: () => void;
 }
-
-type Step = 1 | 2 | 3;
 
 function parseEmailsFromCSV(file: File): Promise<Recipient[]> {
   return new Promise((resolve, reject) => {
@@ -23,13 +27,8 @@ function parseEmailsFromCSV(file: File): Promise<Recipient[]> {
       complete: (results) => {
         const recipients: Recipient[] = [];
         for (const row of results.data) {
-          // Look for email column (case-insensitive)
-          const emailKey = Object.keys(row).find((k) =>
-            k.toLowerCase().includes('email')
-          );
-          const nameKey = Object.keys(row).find((k) =>
-            k.toLowerCase().includes('name')
-          );
+          const emailKey = Object.keys(row).find((k) => k.toLowerCase().includes('email'));
+          const nameKey = Object.keys(row).find((k) => k.toLowerCase().includes('name'));
           const email = emailKey ? row[emailKey]?.trim() : null;
           const name = nameKey ? row[nameKey]?.trim() : undefined;
           if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -58,83 +57,192 @@ function parseEmailsFromText(text: string): Recipient[] {
 }
 
 export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps) {
-  const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
-  const [creatingSender, setCreatingSender] = useState(false);
-  const [availableSenders, setAvailableSenders] = useState(senders);
-
+  
   // Form state
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [rawEmailInput, setRawEmailInput] = useState('');
-  const [selectedSenderId, setSelectedSenderId] = useState(senders[0]?.id ?? '');
-  const [scheduledAt, setScheduledAt] = useState('');
+  const [recipientInput, setRecipientInput] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  
+  // Schedule state
+  const [sendDate, setSendDate] = useState('');
+  const [sendTime, setSendTime] = useState('');
+  
+  // Job Config
   const [delayBetweenMs, setDelayBetweenMs] = useState(2000);
   const [hourlyLimit, setHourlyLimit] = useState(100);
-  const [fileName, setFileName] = useState('');
+  const [selectedSenderId, setSelectedSenderId] = useState(senders[0]?.id ?? '');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.subject) setSubject(parsed.subject);
+        if (Array.isArray(parsed.recipients) && parsed.recipients.length > 0) setRecipients(parsed.recipients);
+        if (parsed.sendDate) setSendDate(parsed.sendDate);
+        if (parsed.sendTime) setSendTime(parsed.sendTime);
+        if (parsed.delayBetweenMs) setDelayBetweenMs(parsed.delayBetweenMs);
+        if (parsed.hourlyLimit) setHourlyLimit(parsed.hourlyLimit);
+        if (parsed.selectedSenderId) setSelectedSenderId(parsed.selectedSenderId);
+        if (parsed.body) {
+          setBody(parsed.body);
+          const el = document.getElementById('rich-editor');
+          if (el) el.innerHTML = parsed.body;
+        }
+      }
+    } catch {
+      /* ignore invalid json */
+    }
+  }, []);
+
+  // Auto-save draft helper
+  const saveDraft = useCallback(() => {
+    try {
+      const html = document.getElementById('rich-editor')?.innerHTML || body;
+      const draft = {
+        subject,
+        body: html,
+        recipients,
+        sendDate,
+        sendTime,
+        delayBetweenMs,
+        hourlyLimit,
+        selectedSenderId,
+      };
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [subject, body, recipients, sendDate, sendTime, delayBetweenMs, hourlyLimit, selectedSenderId]);
+
+  // Keep draft updated
+  useEffect(() => {
+    saveDraft();
+  }, [saveDraft]);
+
+  // Handle escape key to close and save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        saveDraft();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [saveDraft, onClose]);
+
+  // Handle backdrop click
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      saveDraft();
+      onClose();
+    }
+  };
+
+  // Reset entire form
+  const handleReset = () => {
+    if (!confirm('Are you sure you want to reset and clear this compose draft?')) return;
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch { /* ignore */ }
+    setSubject('');
+    setBody('');
+    setRecipients([]);
+    setRecipientInput('');
+    setAttachments([]);
+    setSendDate('');
+    setSendTime('');
+    setDelayBetweenMs(2000);
+    setHourlyLimit(100);
+    const el = document.getElementById('rich-editor');
+    if (el) el.innerHTML = '';
+    toast.success('Compose container reset');
+  };
 
   const handleFileUpload = useCallback(async (file: File) => {
-    setFileName(file.name);
     try {
       const parsed = await parseEmailsFromCSV(file);
       if (parsed.length === 0) {
         toast.error('No valid email addresses found in file');
         return;
       }
-      setRecipients(parsed);
-      toast.success(`Found ${parsed.length} email addresses`);
-    } catch (err) {
+      setRecipients(prev => [...prev, ...parsed]);
+      toast.success(`Added ${parsed.length} recipients`);
+    } catch {
       toast.error('Failed to parse file');
     }
   }, []);
 
-  const handleTextEmailParse = () => {
-    const parsed = parseEmailsFromText(rawEmailInput);
-    if (parsed.length === 0) {
-      toast.error('No valid emails detected');
-      return;
-    }
-    setRecipients(parsed);
-    toast.success(`Detected ${parsed.length} email addresses`);
+  const handleAttachmentUpload = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles = Array.from(files);
+    setAttachments(prev => [...prev, ...newFiles]);
   };
 
-  const handleCreateSender = async () => {
-    setCreatingSender(true);
-    try {
-      const { sender } = await sendersApi.create({ name: 'New Sender' });
-      setAvailableSenders((prev) => [...prev, sender]);
-      setSelectedSenderId(sender.id);
-      toast.success(`Created sender: ${sender.email}`);
-    } catch {
-      toast.error('Failed to create sender');
-    } finally {
-      setCreatingSender(false);
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRecipientKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+      e.preventDefault();
+      const newRecipients = parseEmailsFromText(recipientInput);
+      if (newRecipients.length > 0) {
+        setRecipients(prev => [...prev, ...newRecipients]);
+        setRecipientInput('');
+      } else if (recipientInput.trim().length > 0) {
+        toast.error('Invalid email address format');
+      }
     }
+  };
+
+  const removeRecipient = (index: number) => {
+    setRecipients(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    const el = document.getElementById('rich-editor');
+    if (el) el.focus();
   };
 
   const handleSubmit = async () => {
-    if (!selectedSenderId) { toast.error('Please select a sender'); return; }
+    if (!selectedSenderId) { toast.error('Please configure a sender in the dashboard first'); return; }
     if (!subject.trim()) { toast.error('Subject is required'); return; }
-    if (!body.trim()) { toast.error('Body is required'); return; }
+    
+    const htmlBody = document.getElementById('rich-editor')?.innerHTML || '';
+    if (!htmlBody.trim() || htmlBody === '<br>') { toast.error('Body is required'); return; }
+
     if (recipients.length === 0) { toast.error('At least 1 recipient required'); return; }
-    if (!scheduledAt) { toast.error('Scheduled time is required'); return; }
-    if (new Date(scheduledAt) < new Date()) { toast.error('Schedule time must be in the future'); return; }
+    if (!sendDate || !sendTime) { toast.error('Schedule date and time are required'); return; }
+
+    const scheduledAt = new Date(`${sendDate}T${sendTime}`);
+    if (scheduledAt < new Date()) { toast.error('Schedule time must be in the future'); return; }
 
     setLoading(true);
     try {
       const payload: CreateCampaignPayload = {
         senderId: selectedSenderId,
         subject,
-        body,
+        body: htmlBody,
         recipients,
-        scheduledAt: new Date(scheduledAt).toISOString(),
+        scheduledAt: scheduledAt.toISOString(),
         delayBetweenMs,
         hourlyLimit,
+        hasAttachments: attachments.length > 0,
       };
       await campaignsApi.create(payload);
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch { /* ignore */ }
       onSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create campaign';
@@ -144,435 +252,294 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
     }
   };
 
-  const steps = [
-    { num: 1, label: 'Content' },
-    { num: 2, label: 'Recipients' },
-    { num: 3, label: 'Schedule' },
-  ];
-
-  // Get tomorrow as default min datetime
-  const minDateTime = new Date(Date.now() + 60000).toISOString().slice(0, 16);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/20 backdrop-blur-[2px] transition-all animate-fadein font-sans"
+    >
       <div
-        className="absolute inset-0 cursor-pointer"
-        style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div
-        className="relative w-full max-w-2xl glass-elevated rounded-2xl overflow-hidden animate-fadein"
-        style={{ maxHeight: '90vh', boxShadow: '0 25px 80px rgba(0,0,0,0.5)' }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-4xl h-[84vh] max-h-[720px] min-h-[540px] rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden animate-fadein relative"
       >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, var(--accent), #a78bfa)' }}
-            >
-              <Mail className="w-4 h-4 text-white" />
+        {/* TOP HEADER */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 shrink-0 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shadow-sm">
+              <Mail className="w-3.5 h-3.5" />
             </div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Compose Campaign
-            </h2>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 leading-none">Compose Campaign</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">Draft auto-saved locally</p>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm"
+              title="Reset and clear all inputs in this compose container"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Reset Form
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                saveDraft();
+                onClose();
+              }}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Close (auto-saves draft)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Step Indicator */}
-        <div
-          className="flex items-center px-6 py-3 gap-2"
-          style={{ borderBottom: '1px solid var(--border-subtle)' }}
-        >
-          {steps.map((s, i) => (
-            <div key={s.num} className="flex items-center gap-2">
-              <div
-                className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold transition-all"
-                style={{
-                  background: step >= s.num ? 'var(--accent)' : 'var(--bg-elevated)',
-                  color: step >= s.num ? 'white' : 'var(--text-muted)',
-                }}
-              >
-                {s.num}
-              </div>
-              <span
-                className="text-xs font-medium"
-                style={{ color: step >= s.num ? 'var(--text-primary)' : 'var(--text-muted)' }}
-              >
-                {s.label}
-              </span>
-              {i < steps.length - 1 && (
-                <div className="w-8 h-px mx-1" style={{ background: 'var(--border)' }} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 180px)' }}>
-          {/* Step 1: Content */}
-          {step === 1 && (
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Subject *
-                </label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Your campaign subject line..."
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                  style={{
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Email Body *
-                </label>
-                <textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder="Write your email body here (HTML supported)..."
-                  rows={8}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all font-mono resize-y"
-                  style={{
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                    minHeight: '160px',
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-                />
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                  HTML is supported. Use {'<b>, <i>, <a href="...">'} etc.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Recipients */}
-          {step === 2 && (
-            <div className="space-y-5">
-              {/* File upload */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Upload CSV / Text file
-                </label>
-                <div
-                  className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:border-indigo-500"
-                  style={{ borderColor: 'var(--border)', background: 'var(--bg-elevated)' }}
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const file = e.dataTransfer.files[0];
-                    if (file) handleFileUpload(file);
-                  }}
-                >
-                  <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--accent-light)' }} />
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {fileName || 'Drop CSV here or click to browse'}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                    Column named "email" will be parsed automatically
-                  </p>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv,.txt"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file);
-                  }}
-                />
-              </div>
-
-              {/* Or paste emails */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  — or paste email addresses
-                </label>
-                <textarea
-                  value={rawEmailInput}
-                  onChange={(e) => setRawEmailInput(e.target.value)}
-                  placeholder="john@example.com, jane@example.com..."
-                  rows={4}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all resize-none"
-                  style={{
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-                />
-                <button
-                  onClick={handleTextEmailParse}
-                  className="mt-2 text-xs px-3 py-1.5 rounded-lg transition-colors"
-                  style={{
-                    background: 'rgba(99,102,241,0.15)',
-                    color: 'var(--accent-light)',
-                    border: '1px solid rgba(99,102,241,0.2)',
-                  }}
-                >
-                  Parse Emails
-                </button>
-              </div>
-
-              {/* Preview count */}
-              {recipients.length > 0 && (
-                <div
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                  style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}
-                >
-                  <Users className="w-5 h-5" style={{ color: 'var(--success)' }} />
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--success)' }}>
-                      {recipients.length} recipients detected
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {recipients.slice(0, 3).map((r) => r.email).join(', ')}
-                      {recipients.length > 3 && ` +${recipients.length - 3} more`}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 3: Schedule */}
-          {step === 3 && (
-            <div className="space-y-5">
-              {/* Sender */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Sender *
-                </label>
-                {availableSenders.length === 0 ? (
-                  <div className="flex items-center gap-3">
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No senders configured.</p>
-                    <button
-                      onClick={handleCreateSender}
-                      disabled={creatingSender}
-                      className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg"
-                      style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--accent-light)' }}
-                    >
-                      {creatingSender ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                      Create Ethereal Sender
+        {/* MAIN CONTENT SPLIT */}
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {/* LEFT PANE - COMPOSER (Single Unified Scroll for To, Subject, Dynamic Body, and Attachments) */}
+          <div className="flex-1 flex flex-col overflow-y-auto border-r border-slate-100 p-6 min-h-0 space-y-4">
+            {/* To Field */}
+            <div className="flex items-start border-b border-slate-100 pb-3">
+              <div className="w-16 text-sm font-medium text-slate-500 pt-1 shrink-0">To:</div>
+              <div className="flex-1 flex flex-wrap gap-1.5 items-center">
+                {recipients.map((rec, i) => (
+                  <div key={i} className="flex items-center gap-1.5 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200">
+                    <span>{rec.email}</span>
+                    <button type="button" onClick={() => removeRecipient(i)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                      <X className="w-3 h-3" />
                     </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {availableSenders.map((sender) => (
-                      <label
-                        key={sender.id}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all"
-                        style={{
-                          background: selectedSenderId === sender.id ? 'rgba(99,102,241,0.12)' : 'var(--bg-elevated)',
-                          border: `1px solid ${selectedSenderId === sender.id ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`,
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="sender"
-                          value={sender.id}
-                          checked={selectedSenderId === sender.id}
-                          onChange={() => setSelectedSenderId(sender.id)}
-                          className="hidden"
-                        />
-                        <div
-                          className="w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all"
-                          style={{
-                            borderColor: selectedSenderId === sender.id ? 'var(--accent)' : 'var(--text-muted)',
-                          }}
-                        >
-                          {selectedSenderId === sender.id && (
-                            <div className="w-2 h-2 rounded-full" style={{ background: 'var(--accent)' }} />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{sender.name}</p>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{sender.email}</p>
-                        </div>
-                      </label>
-                    ))}
-                    <button
-                      onClick={handleCreateSender}
-                      disabled={creatingSender}
-                      className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg mt-1"
-                      style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--accent-light)' }}
-                    >
-                      {creatingSender ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                      Add New Sender
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Start time */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Start Time *
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduledAt}
-                  min={minDateTime}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                    colorScheme: 'dark',
-                  }}
-                />
-              </div>
-
-              {/* Delay */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Delay Between Emails: <span style={{ color: 'var(--accent-light)' }}>{delayBetweenMs / 1000}s</span>
-                </label>
-                <input
-                  type="range"
-                  min={1000}
-                  max={60000}
-                  step={500}
-                  value={delayBetweenMs}
-                  onChange={(e) => setDelayBetweenMs(Number(e.target.value))}
-                  className="w-full"
-                  style={{ accentColor: 'var(--accent)' }}
-                />
-                <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  <span>1s</span><span>60s</span>
-                </div>
-              </div>
-
-              {/* Hourly limit */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Hourly Limit: <span style={{ color: 'var(--accent-light)' }}>{hourlyLimit} emails/hr</span>
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={500}
-                  step={1}
-                  value={hourlyLimit}
-                  onChange={(e) => setHourlyLimit(Number(e.target.value))}
-                  className="w-full"
-                  style={{ accentColor: 'var(--accent)' }}
-                />
-                <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  <span>1/hr</span><span>500/hr</span>
-                </div>
-              </div>
-
-              {/* Summary */}
-              <div
-                className="rounded-xl p-4 space-y-2"
-                style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}
-              >
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--accent-light)' }}>
-                  Campaign Summary
-                </h4>
-                {[
-                  ['Recipients', recipients.length.toString()],
-                  ['Subject', subject || '—'],
-                  ['Sender', availableSenders.find((s) => s.id === selectedSenderId)?.email || '—'],
-                  ['Delay', `${delayBetweenMs / 1000}s between sends`],
-                  ['Rate Limit', `${hourlyLimit}/hr per sender`],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between text-sm">
-                    <span style={{ color: 'var(--text-muted)' }}>{k}</span>
-                    <span className="font-medium truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{v}</span>
                   </div>
                 ))}
+                <input 
+                  type="text" 
+                  value={recipientInput}
+                  onChange={(e) => setRecipientInput(e.target.value)}
+                  onKeyDown={handleRecipientKeyDown}
+                  placeholder={recipients.length === 0 ? "Add recipients..." : "Add more..."}
+                  className="flex-1 min-w-[160px] py-1 text-sm font-normal outline-none bg-transparent placeholder:text-slate-400 text-slate-800 font-sans"
+                />
+              </div>
+              <button 
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 ml-3 shrink-0 flex items-center gap-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100/80 px-2.5 py-1 rounded-lg transition-colors mt-0.5"
+                title="Import recipients from CSV"
+              >
+                <CloudUpload className="w-3.5 h-3.5" /> CSV
+              </button>
+              <input 
+                type="file" 
+                ref={csvInputRef} 
+                className="hidden" 
+                accept=".csv,.txt"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFileUpload(e.target.files[0]);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
+            {/* Subject Field */}
+            <div className="flex items-center border-b border-slate-100 pb-3 shrink-0">
+              <div className="w-16 text-sm font-medium text-slate-500 shrink-0">Subject:</div>
+              <input 
+                type="text" 
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Enter subject line..."
+                className="flex-1 py-1 text-sm font-normal outline-none bg-transparent placeholder:text-slate-400 text-slate-800 font-sans"
+                maxLength={100}
+              />
+              <div className="text-[11px] font-medium text-slate-400 ml-3 shrink-0">{subject.length}/100</div>
+            </div>
+
+            {/* Editor & Attachments Merged Container (Expands Dynamically) */}
+            <div className="w-full flex flex-col border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white shrink-0">
+              {/* Toolbar */}
+              <div className="flex items-center gap-1 p-1.5 border-b border-slate-100 bg-slate-50/70 flex-wrap shrink-0">
+                <button type="button" className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 rounded transition-colors mr-1">
+                  Normal Text <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+                <div className="w-px h-4 bg-slate-300 mx-1"></div>
+                <button type="button" onClick={() => handleFormat('bold')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Bold"><Bold className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('italic')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Italic"><Italic className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('underline')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Underline"><Underline className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('strikeThrough')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Strikethrough"><Strikethrough className="w-3.5 h-3.5" /></button>
+                <div className="w-px h-4 bg-slate-300 mx-1"></div>
+                <button type="button" onClick={() => handleFormat('insertUnorderedList')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Bullet List"><List className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('insertOrderedList')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Numbered List"><ListOrdered className="w-3.5 h-3.5" /></button>
+                <div className="w-px h-4 bg-slate-300 mx-1"></div>
+                <button type="button" onClick={() => {
+                  const url = prompt('Enter link URL:');
+                  if (url) handleFormat('createLink', url);
+                }} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Insert Link"><Link className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('formatBlock', 'PRE')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Insert Code Block"><Code className="w-3.5 h-3.5" /></button>
+                <div className="flex-1"></div>
+                <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-semibold rounded hover:bg-emerald-100 transition-colors">
+                  <span className="font-mono">{'{}'}</span> Variables
+                </button>
+              </div>
+              
+              {/* Rich Text Editor Area - Dynamic Height with fixed width & wrap */}
+              <div 
+                id="rich-editor"
+                contentEditable
+                className="w-full max-w-full min-h-[180px] p-4 text-sm font-normal text-slate-800 font-sans outline-none leading-relaxed focus:ring-0 break-words whitespace-pre-wrap [overflow-wrap:anywhere] overflow-x-hidden [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&_a]:text-emerald-600 [&_a]:underline"
+                onInput={(e) => setBody(e.currentTarget.innerHTML)}
+              />
+              
+              {/* Attachments List */}
+              {attachments.length > 0 && (
+                <div className="px-4 pb-2 pt-1.5 flex flex-wrap gap-2 border-t border-slate-100 mt-auto shrink-0">
+                  {attachments.map((file, i) => (
+                    <div key={i} className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-xs animate-fadein">
+                      <Paperclip className="w-3 h-3 text-slate-400" />
+                      <span className="text-slate-700 max-w-[120px] truncate" title={file.name}>{file.name}</span>
+                      <span className="text-[10px] text-slate-400">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
+                      <button 
+                        type="button"
+                        onClick={() => removeAttachment(i)}
+                        className="ml-0.5 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                        title="Remove attachment"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Merged Attachments Dropzone */}
+              <div 
+                className="border-t border-slate-100 bg-slate-50/80 px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-all text-slate-500 shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleAttachmentUpload(e.dataTransfer.files);
+                }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
+                    <CloudUpload className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-700">Attach files or drag & drop</p>
+                  </div>
+                </div>
+                <span className="text-[11px] text-slate-400">Up to 10MB</span>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  multiple
+                  onChange={(e) => handleAttachmentUpload(e.target.files)}
+                />
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Footer */}
-        <div
-          className="flex items-center justify-between px-6 py-4"
-          style={{ borderTop: '1px solid var(--border)' }}
-        >
-          <button
-            onClick={step === 1 ? onClose : () => setStep((s) => (s - 1) as Step)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{
-              background: 'var(--bg-elevated)',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            {step > 1 && <ChevronLeft className="w-4 h-4" />}
-            {step === 1 ? 'Cancel' : 'Back'}
-          </button>
+          {/* RIGHT PANE - SETTINGS */}
+          <div className="w-72 bg-slate-50 border-l border-slate-100 flex flex-col p-5 overflow-y-auto shrink-0">
+            {/* Schedule Settings */}
+            <div className="mb-5">
+              <h3 className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">
+                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                Schedule Settings
+              </h3>
+              <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Send Date</label>
+                  <input 
+                    type="date" 
+                    value={sendDate}
+                    onChange={(e) => setSendDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 font-sans"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Send Time</label>
+                  <input 
+                    type="time" 
+                    value={sendTime}
+                    onChange={(e) => setSendTime(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 font-sans"
+                  />
+                </div>
+              </div>
+            </div>
 
-          {step < 3 ? (
-            <button
-              onClick={() => {
-                if (step === 1 && (!subject.trim() || !body.trim())) {
-                  toast.error('Subject and body are required');
-                  return;
-                }
-                if (step === 2 && recipients.length === 0) {
-                  toast.error('At least one recipient is required');
-                  return;
-                }
-                setStep((s) => (s + 1) as Step);
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
-                color: 'white',
-                boxShadow: '0 4px 12px var(--accent-glow)',
-              }}
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
-                color: 'white',
-                boxShadow: '0 4px 12px var(--accent-glow)',
-              }}
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-              {loading ? 'Scheduling...' : 'Schedule Campaign'}
-            </button>
-          )}
+            {/* Job Configuration */}
+            <div className="mb-5">
+              <h3 className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Job Limits
+              </h3>
+              <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm">
+                <div>
+                  <div className="flex justify-between items-end mb-1">
+                    <label className="block text-xs font-medium text-slate-500">Delay Between Sends</label>
+                    <span className="text-xs font-bold text-emerald-600">{delayBetweenMs / 1000}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1000}
+                    max={60000}
+                    step={500}
+                    value={delayBetweenMs}
+                    onChange={(e) => setDelayBetweenMs(Number(e.target.value))}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between items-end mb-1">
+                    <label className="block text-xs font-medium text-slate-500">Hourly Limit</label>
+                    <span className="text-xs font-bold text-emerald-600">{hourlyLimit}/hr</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={500}
+                    step={1}
+                    value={hourlyLimit}
+                    onChange={(e) => setHourlyLimit(Number(e.target.value))}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Sender Identity</label>
+                  <div className="relative">
+                    <select 
+                      value={selectedSenderId}
+                      onChange={(e) => setSelectedSenderId(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 appearance-none cursor-pointer font-sans"
+                    >
+                      {senders.length === 0 ? (
+                        <option value="">No senders available</option>
+                      ) : (
+                        senders.map(s => <option key={s.id} value={s.id}>{s.name ? `${s.name} <${s.email}>` : s.email}</option>)
+                      )}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-3 border-t border-slate-200">
+              <button 
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs transition-colors shadow-sm shadow-emerald-500/25 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                Schedule Campaign
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

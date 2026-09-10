@@ -1,181 +1,127 @@
-# 🚀 ReachInbox Email Scheduler
+<div align="center">
+  <h1>mailZy</h1>
+  <p>A high-performance, fault-tolerant email scheduling and dispatch engine.</p>
+  
+  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
+  [![Express.js](https://img.shields.io/badge/Express.js-404D59?style=flat-square)](https://expressjs.com/)
+  [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+  [![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io/)
+  [![BullMQ](https://img.shields.io/badge/BullMQ-FF4081?style=flat-square)](https://docs.bullmq.io/)
+</div>
 
-A production-grade email scheduler built with **BullMQ + Redis**, **PostgreSQL**, **Express.js**, **Firebase Auth**, and a **Next.js** dashboard.
+<br />
 
----
-
-## 📦 Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Backend | Express.js + TypeScript |
-| Queue | BullMQ (Redis-backed delayed jobs) |
-| ORM | Drizzle ORM |
-| Database | PostgreSQL 16 |
-| Cache / Queue Store | Redis 7 |
-| SMTP | Ethereal Email (fake SMTP) |
-| Auth | Firebase Authentication (Google Sign-In) |
-| Frontend | Next.js 14 + TypeScript + Tailwind CSS |
+**mailZy** is a production-grade email job scheduling system designed to handle high-throughput campaigns. It provides granular rate limiting, delayed execution, strict idempotency, and robust crash-recovery mechanisms—all controlled from a sleek Next.js dashboard.
 
 ---
 
-## ⚡ Quick Start
+## ✨ Features
+
+- **Distributed Queuing:** Powered by BullMQ and Redis for massive scale and reliability.
+- **Granular Rate Limiting:** Atomic Redis Lua scripts enforce global and per-sender hourly limits without race conditions.
+- **Fault Tolerant:** Delayed jobs persist across server restarts. Idempotent job IDs prevent duplicate sends.
+- **Modern Dashboard:** Built with Next.js 14, offering real-time auto-polling queue stats, search, and folder management.
+- **Smart Retries:** Intelligent backoff strategies and automatic re-queuing for rate-limited dispatches.
+- **Ethereal Integration:** Built-in fake SMTP testing with instant HTML preview links.
+- **Slack Alerts:** Real-time webhooks or OAuth notifications for rate limit hits and completed batches.
+
+---
+
+## 🛠️ Architecture Overview
+
+The system is split into two primary components communicating via a REST API:
+
+### Core Infrastructure
+- **Frontend:** Next.js 14, Tailwind CSS, Lucide Icons.
+- **Backend:** Express.js, TypeScript, Drizzle ORM.
+- **Storage & State:** PostgreSQL 16 (persistent records), Redis 7 (delayed queues, atomic limits).
+- **Authentication:** Firebase Auth (Google Sign-In).
+
+### Queue & Dispatch Lifecycle
+1. **Schedule:** Campaigns are submitted with a configured `delayBetweenMs` and `hourlyLimit`.
+2. **Queue:** BullMQ calculates the offset for each recipient and schedules deterministic delayed jobs in Redis.
+3. **Process:** Workers pick up matured jobs, evaluating limits via an atomic Lua script.
+4. **Dispatch:** Allowed jobs are sent via SMTP; rate-limited jobs are instantly re-queued for the next hourly window.
+
+---
+
+## 🚀 Quick Start
+
+Follow these steps to get mailZy running locally.
 
 ### 1. Prerequisites
-- Node.js 18+
-- Docker + Docker Compose
-- Firebase Project with Google Sign-In enabled
+- [Node.js 18+](https://nodejs.org/)
+- [Docker & Docker Compose](https://www.docker.com/)
+- A [Firebase Project](https://console.firebase.google.com/) (with Google Sign-In enabled)
 
-### 2. Start Infrastructure
-
+### 2. Infrastructure Setup
+Start the required PostgreSQL and Redis containers:
 ```bash
 docker-compose up -d
 ```
-
-This starts PostgreSQL on port `5432` and Redis on port `6379`.
+> *This provisions PostgreSQL on port `5432` and Redis on port `6379`.*
 
 ### 3. Backend Setup
+Navigate to the backend directory, install dependencies, and configure your environment.
 
 ```bash
 cd backend
 cp .env.example .env
-# Fill in your Firebase credentials in .env
+```
+Update `.env` with your Firebase Admin SDK credentials. Then, initialize the database and start the server:
+
+```bash
 npm install
-
-# Push schema to database
-npm run db:push
-
-# Seed Ethereal senders
-npm run db:seed
-
-# Start dev server
-npm run dev
+npm run db:push    # Push the schema to PostgreSQL
+npm run db:seed    # Seed the database with mock Ethereal senders
+npm run dev        # Start the backend API on http://localhost:4000
 ```
 
-Backend runs at `http://localhost:4000`.
-
 ### 4. Frontend Setup
+Open a new terminal, navigate to the frontend directory, and set up your web environment.
 
 ```bash
 cd frontend
 cp .env.example .env.local
-# Fill in Firebase web config in .env.local
+```
+Update `.env.local` with your Firebase Web client configuration. Then, launch the dashboard:
+
+```bash
 npm install
-npm run dev
+npm run dev        # Start the Next.js app on http://localhost:3000
 ```
 
-Frontend runs at `http://localhost:3000`.
+---
+
+## 💻 Usage Guide
+
+1. **Authentication:** Open `http://localhost:3000` and sign in using Google.
+2. **Dashboard:** Monitor real-time queue health, scheduled dispatches, and active senders.
+3. **Compose Campaign:**
+   - Click **Compose Email**.
+   - Input recipients manually or upload a CSV.
+   - Use the rich text editor to format your message.
+   - Set your **Delay Between Sends** (e.g., `2s`) and **Hourly Limit**.
+   - Hit **Schedule Campaign**.
+4. **Live Monitoring:** The dashboard automatically polls and updates as emails transition from the delayed queue into the `Sent` folder.
+5. **Preview:** Click "View" on any sent email to instantly see the rendered HTML in Ethereal.
 
 ---
 
-## 🔥 Firebase Setup
+## ⚙️ Core Configuration
 
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable **Google Sign-In** under Authentication > Sign-in method
-3. Add `http://localhost:3000` to authorized domains
-4. **Backend (Admin SDK)**: Download Service Account JSON from Project Settings > Service Accounts → fill in `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL` in `backend/.env`
-5. **Frontend**: Copy Web App config from Project Settings > Your apps → fill in `NEXT_PUBLIC_FIREBASE_*` vars in `frontend/.env.local`
-
----
-
-## ⚙️ Configuration
-
-### Backend Environment Variables
+Fine-tune mailZy's behavior via these backend environment variables:
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `WORKER_CONCURRENCY` | `5` | Number of parallel email workers |
-| `MIN_DELAY_MS` | `2000` | Minimum delay between individual sends (ms) |
-| `MAX_EMAILS_PER_HOUR` | `200` | Global hourly cap |
-| `MAX_EMAILS_PER_HOUR_PER_SENDER` | `100` | Per-sender hourly cap |
+| :--- | :--- | :--- |
+| `WORKER_CONCURRENCY` | `5` | Maximum number of concurrent email workers processing jobs. |
+| `MIN_DELAY_MS` | `2000` | Hard limit for the absolute minimum delay between sends. |
+| `MAX_EMAILS_PER_HOUR` | `200` | Global fallback hourly cap across the entire system. |
+| `MAX_EMAILS_PER_HOUR_PER_SENDER` | `100` | Default per-sender hourly cap (overridable in the UI). |
 
 ---
 
-## 🏗️ Architecture
-
-### Scheduling Flow
-
-```
-POST /api/campaigns
-  → Validate request
-  → Create campaign in PostgreSQL
-  → Return 201 immediately (async scheduling)
-  ↓
-schedulerService.scheduleCampaign()
-  → For each recipient[i]:
-      delay = scheduledAt + (i × delayBetweenMs) - now
-      BullMQ.add('send-email', jobData, { delay, jobId: 'campaign_X_recipient_Y' })
-      INSERT INTO email_jobs (bullJobId = jobId)
-```
-
-### Worker Flow
-
-```
-BullMQ Worker picks up job when delay expires
-  → Idempotency: check if email_job.status == 'sent' → skip
-  → Rate limit: Redis atomic Lua script check
-      ✓ Allowed: INCR counter → send email via Ethereal → update DB
-      ✗ Exceeded: DECR counter → re-queue with delay to next hour window
-                  → update DB status = 'rate_limited'
-```
-
-### Rate Limiting (Redis Atomic Lua Script)
-
-```lua
-local count = redis.call('INCR', KEYS[1])        -- Key: rate:{senderId}:{YYYY-MM-DD-HH}
-if count == 1 then redis.call('EXPIRE', KEYS[1], 3600) end
-if count > tonumber(ARGV[1]) then
-  redis.call('DECR', KEYS[1])   -- Rollback
-  return 0                       -- Not allowed
-end
-return count                     -- Allowed
-```
-
-**Why Lua?** Ensures the check-and-increment is atomic across multiple workers, preventing race conditions.
-
-### Persistence After Restarts
-
-BullMQ stores delayed jobs in Redis sorted sets (`bull:email-dispatch:delayed`) keyed by their fire timestamp. On server restart, the worker simply reconnects and jobs fire at their correct time — **no replaying, no duplication**.
-
-### Idempotency
-
-BullMQ jobs use deterministic `jobId = campaign_{id}_recipient_{email}`. If `emailQueue.add()` is called twice with the same `jobId`, BullMQ ignores the duplicate. DB records also use `ON CONFLICT DO NOTHING`.
-
----
-
-## 📊 Rate Limiting Details
-
-| Config | Default |
-|--------|---------|
-| Min delay between sends | 2,000ms (via BullMQ `limiter`) |
-| Max emails/hour/sender | 100 |
-| Max emails/hour global | 200 |
-
-**Behavior at limit:**
-- Jobs are **never dropped**
-- Excess jobs are re-queued to the start of the next hour window
-- DB status shows `rate_limited` until re-queued job succeeds
-- Order preserved via sequential delay offsets
-
-**1000+ emails scheduled at same time:**
-- All get queued as BullMQ delayed jobs → Redis sorted set
-- Workers process 5 concurrent jobs (configurable)
-- 2s minimum gap enforced by BullMQ limiter
-- Once hourly limit hit → rest re-queue to next hour → continues automatically
-
----
-
-## 🗄️ Database Schema
-
-```
-users:          Firebase UID → user profile
-senders:        Ethereal SMTP credentials
-campaigns:      Campaign metadata + status
-email_jobs:     Per-recipient job tracking (bullJobId, status, sentAt, previewUrl)
-```
-
----
-
-## 📬 Ethereal Email
-
-All emails are sent via [Ethereal](https://ethereal.email/) — a fake SMTP service for testing. Each sent email logs a preview URL to the console and stores it in the DB. View sent emails in the dashboard's "Sent" tab with a **Preview** button.
+<div align="center">
+  <p>Built with ❤️ for modern engineering teams.</p>
+</div>

@@ -20,16 +20,16 @@ async function createEtherealAccount(): Promise<{ user: string; pass: string }> 
 
 const NEW_SENDERS = [
   {
-    name: 'ReachInBox',
-    email: 'reachinbox@reachinbox.com',
+    name: 'mailZy',
+    email: 'team@mailzy.io',
   },
   {
     name: 'OutboxLab',
     email: 'contact@outboxlab.com',
   },
   {
-    name: 'Admin @ ReachInbox',
-    email: 'admin@reachinbox.com',
+    name: 'Admin @ mailZy',
+    email: 'admin@mailzy.io',
   },
 ];
 

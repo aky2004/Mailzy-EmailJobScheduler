@@ -1,7 +1,7 @@
 {
   "name": "outboxlab-backend",
   "version": "1.0.0",
-  "description": "ReachInbox Email Scheduler Backend – Express + BullMQ + PostgreSQL",
+  "description": "mailZy Email Scheduler Backend – Express + BullMQ + PostgreSQL",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

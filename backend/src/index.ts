@@ -50,7 +50,7 @@ app.use(express.urlencoded({ extended: true }));
 const healthResponse = (_req: express.Request, res: express.Response) => {
   res.json({
     status: 'ok',
-    service: 'ReachInbox Email Scheduler API',
+    service: 'mailZy Email Scheduler API',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     uptime: `${Math.floor(process.uptime())}s`,
