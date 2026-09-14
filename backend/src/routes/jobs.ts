@@ -17,18 +17,7 @@ router.get('/scheduled', authenticate, async (req: Request, res: Response) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Get campaign IDs belonging to this user
-    const userCampaigns = await db
-      .select({ id: campaigns.id })
-      .from(campaigns)
-      .where(eq(campaigns.userId, req.user!.dbId));
-
-    const campaignIds = userCampaigns.map((c) => c.id);
-
-    if (campaignIds.length === 0) {
-      res.json({ jobs: [], pagination: { page, limit, total: 0, pages: 0 } });
-      return;
-    }
+    // We can query emailJobs directly by joining campaigns and filtering by userId
 
     const jobs = await db
       .select({
@@ -51,7 +40,7 @@ router.get('/scheduled', authenticate, async (req: Request, res: Response) => {
       .leftJoin(senders, eq(campaigns.senderId, senders.id))
       .where(
         and(
-          inArray(emailJobs.campaignId, campaignIds),
+          eq(campaigns.userId, req.user!.dbId),
           or(eq(emailJobs.status, 'pending'), eq(emailJobs.status, 'rate_limited'))
         )
       )
@@ -62,9 +51,10 @@ router.get('/scheduled', authenticate, async (req: Request, res: Response) => {
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)` })
       .from(emailJobs)
+      .leftJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
       .where(
         and(
-          inArray(emailJobs.campaignId, campaignIds),
+          eq(campaigns.userId, req.user!.dbId),
           or(eq(emailJobs.status, 'pending'), eq(emailJobs.status, 'rate_limited'))
         )
       );
@@ -89,17 +79,7 @@ router.get('/sent', authenticate, async (req: Request, res: Response) => {
   const offset = (page - 1) * limit;
 
   try {
-    const userCampaigns = await db
-      .select({ id: campaigns.id })
-      .from(campaigns)
-      .where(eq(campaigns.userId, req.user!.dbId));
-
-    const campaignIds = userCampaigns.map((c) => c.id);
-
-    if (campaignIds.length === 0) {
-      res.json({ jobs: [], pagination: { page, limit, total: 0, pages: 0 } });
-      return;
-    }
+    // We can query emailJobs directly by joining campaigns and filtering by userId
 
     const jobs = await db
       .select({
@@ -124,7 +104,7 @@ router.get('/sent', authenticate, async (req: Request, res: Response) => {
       .leftJoin(senders, eq(campaigns.senderId, senders.id))
       .where(
         and(
-          inArray(emailJobs.campaignId, campaignIds),
+          eq(campaigns.userId, req.user!.dbId),
           or(eq(emailJobs.status, 'sent'), eq(emailJobs.status, 'failed'))
         )
       )
@@ -135,9 +115,10 @@ router.get('/sent', authenticate, async (req: Request, res: Response) => {
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)` })
       .from(emailJobs)
+      .leftJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
       .where(
         and(
-          inArray(emailJobs.campaignId, campaignIds),
+          eq(campaigns.userId, req.user!.dbId),
           or(eq(emailJobs.status, 'sent'), eq(emailJobs.status, 'failed'))
         )
       );
