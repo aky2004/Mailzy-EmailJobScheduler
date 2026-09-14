@@ -1,7 +1,7 @@
 import { emailQueue, EmailJobData } from '../jobs/emailQueue';
 import { db } from '../db';
 import { emailJobs, campaigns, senders } from '../db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and, or } from 'drizzle-orm';
 
 /**
  * Startup Recovery Service
@@ -58,7 +58,7 @@ export async function recoverPendingJobs(): Promise<void> {
       .leftJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
       .leftJoin(senders, eq(campaigns.senderId, senders.id))
       .where(
-        inArray(emailJobs.status, ['pending', 'rate_limited'])
+        or(eq(emailJobs.status, 'pending'), eq(emailJobs.status, 'rate_limited'))
       );
 
     if (pendingJobs.length === 0) {

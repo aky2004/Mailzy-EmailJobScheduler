@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { db } from '../db';
 import { emailJobs, campaigns, senders } from '../db/schema';
-import { eq, desc, inArray, sql, and } from 'drizzle-orm';
+import { eq, desc, inArray, sql, and, or } from 'drizzle-orm';
 import { getQueueStats } from '../jobs/emailQueue';
 
 const router = Router();
@@ -52,7 +52,7 @@ router.get('/scheduled', authenticate, async (req: Request, res: Response) => {
       .where(
         and(
           inArray(emailJobs.campaignId, campaignIds),
-          inArray(emailJobs.status, ['pending', 'rate_limited'])
+          or(eq(emailJobs.status, 'pending'), eq(emailJobs.status, 'rate_limited'))
         )
       )
       .orderBy(emailJobs.scheduledAt)
@@ -65,7 +65,7 @@ router.get('/scheduled', authenticate, async (req: Request, res: Response) => {
       .where(
         and(
           inArray(emailJobs.campaignId, campaignIds),
-          inArray(emailJobs.status, ['pending', 'rate_limited'])
+          or(eq(emailJobs.status, 'pending'), eq(emailJobs.status, 'rate_limited'))
         )
       );
 
@@ -125,7 +125,7 @@ router.get('/sent', authenticate, async (req: Request, res: Response) => {
       .where(
         and(
           inArray(emailJobs.campaignId, campaignIds),
-          inArray(emailJobs.status, ['sent', 'failed'])
+          or(eq(emailJobs.status, 'sent'), eq(emailJobs.status, 'failed'))
         )
       )
       .orderBy(desc(emailJobs.sentAt))
@@ -138,7 +138,7 @@ router.get('/sent', authenticate, async (req: Request, res: Response) => {
       .where(
         and(
           inArray(emailJobs.campaignId, campaignIds),
-          inArray(emailJobs.status, ['sent', 'failed'])
+          or(eq(emailJobs.status, 'sent'), eq(emailJobs.status, 'failed'))
         )
       );
 

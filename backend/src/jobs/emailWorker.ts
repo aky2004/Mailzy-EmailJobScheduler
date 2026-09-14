@@ -6,7 +6,7 @@ import { sendEmail } from '../services/emailService';
 import { checkRateLimit } from '../services/rateLimiter';
 import { db } from '../db';
 import { emailJobs, campaigns, slackConnections } from '../db/schema';
-import { eq, sql, and, inArray } from 'drizzle-orm';
+import { eq, sql, and, inArray, or } from 'drizzle-orm';
 import { esClient, ES_INDEX } from '../config/es';
 
 /**
@@ -223,7 +223,7 @@ async function checkAndUpdateCampaignStatus(campaignId: string): Promise<void> {
     .where(
       and(
         eq(emailJobs.campaignId, campaignId),
-        inArray(emailJobs.status, ['pending', 'rate_limited'])
+        or(eq(emailJobs.status, 'pending'), eq(emailJobs.status, 'rate_limited'))
       )
     )
     .then((rows) => Number(rows[0]?.count ?? 0));
