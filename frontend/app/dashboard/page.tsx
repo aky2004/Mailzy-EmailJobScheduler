@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import {
   Mail, Edit3, Clock, Send, Star, Trash2, LayoutDashboard,
   Search, RefreshCw, LogOut, CheckCircle2, XCircle, Activity,
@@ -224,7 +225,50 @@ function SimpleEmailRow({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { firebaseUser, signOut: authSignOut, updateDisplayName } = useAuth();
-  const [folder, setFolder] = useState<Folder>('overview');
+  const params = useParams();
+  const validFolders: Folder[] = ['overview', 'scheduled', 'sent', 'starred', 'trash', 'senders', 'profile'];
+
+  const [folder, setFolder] = useState<Folder>(() => {
+    const tabParam = (params?.tab as string)?.toLowerCase();
+    if (tabParam && validFolders.includes(tabParam as Folder)) {
+      return tabParam as Folder;
+    }
+    return 'overview';
+  });
+
+  const navigateToFolder = (nextFolder: Folder) => {
+    setFolder(nextFolder);
+    const targetPath = nextFolder === 'overview' ? '/dashboard' : `/dashboard/${nextFolder}`;
+    if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
+      window.history.pushState({ folder: nextFolder }, '', targetPath);
+    }
+  };
+
+  useEffect(() => {
+    const tabParam = (params?.tab as string)?.toLowerCase();
+    if (tabParam && validFolders.includes(tabParam as Folder)) {
+      setFolder(tabParam as Folder);
+    } else if (!tabParam && typeof window !== 'undefined') {
+      const pathSegment = window.location.pathname.replace(/^\/dashboard\/?/, '').toLowerCase() as Folder;
+      if (validFolders.includes(pathSegment)) {
+        setFolder(pathSegment);
+      } else {
+        setFolder('overview');
+      }
+    }
+
+    const handlePopState = () => {
+      const currentSegment = window.location.pathname.replace(/^\/dashboard\/?/, '').toLowerCase() as Folder;
+      if (validFolders.includes(currentSegment)) {
+        setFolder(currentSegment);
+      } else {
+        setFolder('overview');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [params?.tab]);
   const [scheduledJobs, setScheduledJobs] = useState<EmailJob[]>([]);
   const [sentJobs, setSentJobs] = useState<EmailJob[]>([]);
   const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
@@ -524,7 +568,7 @@ export default function DashboardPage() {
           {/* Main Overview Button */}
           <button
             type="button"
-            onClick={() => setFolder('overview')}
+            onClick={() => navigateToFolder('overview')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer active:scale-[0.98] ${
               folder === 'overview'
                 ? 'bg-[#54C750] text-[#060C06] shadow-[0_4px_16px_rgba(84,199,80,0.3)] border border-[#54C750]'
@@ -562,35 +606,35 @@ export default function DashboardPage() {
                 label="Scheduled"
                 badge={activeScheduled.length}
                 active={folder === 'scheduled'}
-                onClick={() => setFolder('scheduled')}
+                onClick={() => navigateToFolder('scheduled')}
               />
               <FolderButton
                 icon={<Send className="w-4 h-4" />}
                 label="Sent"
                 badge={activeSent.length}
                 active={folder === 'sent'}
-                onClick={() => setFolder('sent')}
+                onClick={() => navigateToFolder('sent')}
               />
               <FolderButton
                 icon={<Star className="w-4 h-4" />}
                 label="Starred"
                 badge={starred.length}
                 active={folder === 'starred'}
-                onClick={() => setFolder('starred')}
+                onClick={() => navigateToFolder('starred')}
               />
               <FolderButton
                 icon={<Trash2 className="w-4 h-4" />}
                 label="Trash"
                 badge={trash.length}
                 active={folder === 'trash'}
-                onClick={() => setFolder('trash')}
+                onClick={() => navigateToFolder('trash')}
               />
               <FolderButton
                 icon={<Users className="w-4 h-4" />}
                 label="Configured Senders"
                 badge={senders.length}
                 active={folder === 'senders'}
-                onClick={() => setFolder('senders')}
+                onClick={() => navigateToFolder('senders')}
               />
             </div>
           </div>
@@ -625,7 +669,7 @@ export default function DashboardPage() {
 
         {/* User profile card (Interactive navigation button to profile page) */}
         <div
-          onClick={() => setFolder('profile')}
+          onClick={() => navigateToFolder('profile')}
           className={`rounded-2xl border p-3 flex items-center gap-3 shadow-sm flex-shrink-0 cursor-pointer transition-all duration-200 group ${
             folder === 'profile'
               ? 'bg-[#54C750]/15 border-[#54C750] shadow-[0_0_16px_rgba(84,199,80,0.2)]'
@@ -955,7 +999,7 @@ export default function DashboardPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setFolder('sent')}
+                        onClick={() => navigateToFolder('sent')}
                         className="text-xs text-[#54C750] hover:text-[#46af42] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         View All <ChevronRight className="w-3.5 h-3.5" />
@@ -1061,7 +1105,7 @@ export default function DashboardPage() {
                     description="Keep your important campaigns and deliveries within easy reach. Click the star icon on any scheduled or sent email to bookmark it here."
                     actionText="Browse Sent History"
                     actionIcon={<Send className="w-4 h-4" />}
-                    onAction={() => setFolder('sent')}
+                    onAction={() => navigateToFolder('sent')}
                     features={[
                       {
                         icon: '⭐',
@@ -1121,7 +1165,7 @@ export default function DashboardPage() {
                     description="There are no deleted emails in your recycle bin. When you remove emails from Scheduled or Sent, they will stay stored here safely until permanent purge."
                     actionText="Return to Dashboard"
                     actionIcon={<LayoutDashboard className="w-4 h-4" />}
-                    onAction={() => setFolder('overview')}
+                    onAction={() => navigateToFolder('overview')}
                     features={[
                       {
                         icon: '🛡️',
