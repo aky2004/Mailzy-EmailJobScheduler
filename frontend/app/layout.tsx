@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'mailZy – Email Scheduler',
-  description: 'Production-grade email scheduler with BullMQ and Ethereal SMTP. Schedule, monitor, and track email campaigns at scale.',
+  description: 'Production-grade email scheduler with BullMQ and per-user SMTP. Schedule, monitor, and deliver email campaigns at scale.',
   keywords: ['email scheduler', 'BullMQ', 'mailZy', 'cold email', 'outreach'],
 };
 

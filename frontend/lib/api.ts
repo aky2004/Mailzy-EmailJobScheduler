@@ -7,6 +7,7 @@ import type {
   PaginatedSenders,
   CreateCampaignPayload,
   CreateSenderPayload,
+  TestSmtpPayload,
   Sender,
   User,
   QueueStats,
@@ -39,8 +40,10 @@ export const authApi = {
 // Senders
 export const sendersApi = {
   list: (): Promise<PaginatedSenders> => api.get('/api/senders').then((r) => r.data),
-  create: (data: CreateSenderPayload): Promise<{ sender: Sender }> =>
+  create: (data: CreateSenderPayload): Promise<{ sender: Sender; verified: boolean; verifyError?: string }> =>
     api.post('/api/senders', data).then((r) => r.data),
+  testConnection: (data: TestSmtpPayload): Promise<{ success: boolean; error?: string }> =>
+    api.post('/api/senders/test', data).then((r) => r.data),
   delete: (id: string): Promise<{ message: string; id: string }> =>
     api.delete(`/api/senders/${id}`).then((r) => r.data),
 };
@@ -69,18 +72,6 @@ export const jobsApi = {
     api.patch(`/api/jobs/${id}/state`, state).then((r) => r.data),
   delete: (id: string): Promise<{ success: boolean }> =>
     api.delete(`/api/jobs/${id}`).then((r) => r.data),
-};
-
-// Slack
-export const slackApi = {
-  getStatus: (): Promise<{ connected: boolean; teamName?: string; channelName?: string; webhookUrl?: string }> =>
-    api.get('/api/slack/status').then((r) => r.data),
-  disconnect: (): Promise<{ success: boolean; message: string }> =>
-    api.delete('/api/slack/disconnect').then((r) => r.data),
-  saveWebhook: (webhookUrl: string, channelName?: string): Promise<{ success: boolean; message: string }> =>
-    api.post('/api/slack/webhook', { webhookUrl, channelName }).then((r) => r.data),
-  testNotification: (): Promise<{ success: boolean; message: string }> =>
-    api.post('/api/slack/test').then((r) => r.data),
 };
 
 export default api;

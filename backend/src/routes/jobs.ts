@@ -3,7 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { db } from '../db';
 import { emailJobs, campaigns, senders } from '../db/schema';
 import { eq, desc, inArray, sql, and, or } from 'drizzle-orm';
-import { getQueueStats } from '../jobs/emailQueue';
+import { getQueueStats, emailQueue } from '../jobs/emailQueue';
 
 const router = Router();
 
@@ -135,12 +135,48 @@ router.get('/sent', authenticate, async (req: Request, res: Response) => {
 
 /**
  * GET /api/jobs/stats
- * Returns queue stats from BullMQ.
+ * Returns queue stats scoped strictly to the authenticated user.
  */
-router.get('/stats', authenticate, async (_req: Request, res: Response) => {
+router.get('/stats', authenticate, async (req: Request, res: Response) => {
   try {
-    const stats = await getQueueStats();
-    res.json({ queue: stats });
+    const userId = req.user!.dbId;
+
+    // Live active jobs in BullMQ belonging to this user
+    let userActiveCount = 0;
+    try {
+      const activeJobs = await emailQueue.getActive();
+      userActiveCount = activeJobs.filter((j) => j.data?.userId === userId).length;
+    } catch {
+      // In case Redis check is momentarily unavailable
+    }
+
+    // Aggregate user's job counts from database
+    const [counts] = await db
+      .select({
+        completed: sql<number>`coalesce(count(case when ${emailJobs.status} = 'sent' then 1 end), 0)::int`,
+        failed: sql<number>`coalesce(count(case when ${emailJobs.status} = 'failed' then 1 end), 0)::int`,
+        delayed: sql<number>`coalesce(count(case when (${emailJobs.status} = 'pending' or ${emailJobs.status} = 'rate_limited') and ${emailJobs.scheduledAt} > now() then 1 end), 0)::int`,
+        waiting: sql<number>`coalesce(count(case when (${emailJobs.status} = 'pending' or ${emailJobs.status} = 'rate_limited') and ${emailJobs.scheduledAt} <= now() then 1 end), 0)::int`,
+      })
+      .from(emailJobs)
+      .innerJoin(campaigns, eq(emailJobs.campaignId, campaigns.id))
+      .where(and(eq(campaigns.userId, userId), eq(emailJobs.isDeleted, false)));
+
+    const waiting = Math.max(0, (counts?.waiting ?? 0) - userActiveCount);
+    const active = userActiveCount;
+    const delayed = counts?.delayed ?? 0;
+    const completed = counts?.completed ?? 0;
+    const failed = counts?.failed ?? 0;
+
+    res.json({
+      queue: {
+        waiting,
+        active,
+        delayed,
+        completed,
+        failed,
+      },
+    });
   } catch (error) {
     console.error('Get queue stats error:', error);
     res.status(500).json({ error: 'Failed to fetch queue stats' });

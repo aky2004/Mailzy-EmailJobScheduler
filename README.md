@@ -22,9 +22,8 @@
 - **Granular Rate Limiting:** Atomic Redis Lua scripts enforce global and per-sender hourly limits without race conditions.
 - **Fault Tolerant:** Delayed jobs persist across server restarts. Idempotent job IDs prevent duplicate sends.
 - **Modern Dashboard:** Built with Next.js 14, offering real-time auto-polling queue stats, search, and folder management.
-- **Smart Retries:** Intelligent backoff strategies and automatic re-queuing for rate-limited dispatches.
-- **Ethereal Integration:** Built-in fake SMTP testing with instant HTML preview links.
-- **Slack Alerts:** Real-time webhooks or OAuth notifications for rate limit hits and completed batches.
+- **Per-User Real SMTP Delivery:** Connect your own email accounts (Gmail, Outlook, Yahoo, or Custom SMTP) to deliver directly into real recipient inboxes.
+- **AES-256 Encryption:** User SMTP passwords and app passwords are encrypted at rest with AES-256-GCM.
 
 ---
 
@@ -52,17 +51,11 @@ Follow these steps to get mailZy running locally.
 
 ### 1. Prerequisites
 - [Node.js 18+](https://nodejs.org/)
-- [Docker & Docker Compose](https://www.docker.com/)
+- A PostgreSQL database (e.g. [Neon.tech](https://neon.tech/) or local PostgreSQL)
+- A Redis instance (e.g. local Redis or [Redis Cloud](https://redis.io/))
 - A [Firebase Project](https://console.firebase.google.com/) (with Google Sign-In enabled)
 
-### 2. Infrastructure Setup
-Start the required PostgreSQL and Redis containers:
-```bash
-docker-compose up -d
-```
-> *This provisions PostgreSQL on port `5432` and Redis on port `6379`.*
-
-### 3. Backend Setup
+### 2. Backend Setup
 Navigate to the backend directory, install dependencies, and configure your environment.
 
 ```bash
@@ -74,11 +67,10 @@ Update `.env` with your Firebase Admin SDK credentials. Then, initialize the dat
 ```bash
 npm install
 npm run db:push    # Push the schema to PostgreSQL
-npm run db:seed    # Seed the database with mock Ethereal senders
 npm run dev        # Start the backend API on http://localhost:4000
 ```
 
-### 4. Frontend Setup
+### 3. Frontend Setup
 Open a new terminal, navigate to the frontend directory, and set up your web environment.
 
 ```bash
@@ -97,15 +89,14 @@ npm run dev        # Start the Next.js app on http://localhost:3000
 ## 💻 Usage Guide
 
 1. **Authentication:** Open `http://localhost:3000` and sign in using Google.
-2. **Dashboard:** Monitor real-time queue health, scheduled dispatches, and active senders.
+2. **Sender Profiles:** Under the **Senders** tab, connect your Gmail, Outlook, Yahoo, or Custom SMTP mailbox with live connection testing.
 3. **Compose Campaign:**
    - Click **Compose Email**.
    - Input recipients manually or upload a CSV.
    - Use the rich text editor to format your message.
    - Set your **Delay Between Sends** (e.g., `2s`) and **Hourly Limit**.
    - Hit **Schedule Campaign**.
-4. **Live Monitoring:** The dashboard automatically polls and updates as emails transition from the delayed queue into the `Sent` folder.
-5. **Preview:** Click "View" on any sent email to instantly see the rendered HTML in Ethereal.
+4. **Live Monitoring:** The dashboard automatically polls and updates as emails transition from the delayed queue into the `Sent` folder with real delivery status.
 
 ---
 

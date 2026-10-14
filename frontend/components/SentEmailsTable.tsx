@@ -34,15 +34,15 @@ export function SentEmailsTable({ jobs, loading, onStar, onDelete, onCompose }: 
         icon={<Send className="w-9 h-9 text-emerald-600" />}
         badge="Outbox Ready"
         title="No Dispatched Emails Yet"
-        description="Once your scheduled campaigns execute, all delivered and dispatched emails will appear here with live timestamps, status checks, and Ethereal preview links."
+        description="Once your scheduled campaigns execute, all delivered and dispatched emails will appear here with live timestamps, status checks, and delivery records."
         actionText="Schedule First Email"
         actionIcon={<Edit3 className="w-4 h-4" />}
         onAction={onCompose}
         features={[
           {
-            icon: '🔗',
-            title: 'Ethereal Previews',
-            desc: 'Inspect rendered HTML emails in your browser via test preview links.',
+            icon: '📬',
+            title: 'Direct Inbox Delivery',
+            desc: 'Real outbound SMTP delivery directly into your recipients\' inboxes.',
           },
           {
             icon: '🔎',

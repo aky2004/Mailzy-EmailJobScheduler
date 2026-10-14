@@ -5,13 +5,13 @@ import {
   Mail, Edit3, Clock, Send, Star, Trash2, LayoutDashboard,
   Search, RefreshCw, LogOut, CheckCircle2, XCircle, Activity,
   ChevronRight, Paperclip, ExternalLink, X,
-  TrendingUp, Users, RotateCcw,
+  TrendingUp, Users, RotateCcw, Plus,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { jobsApi, sendersApi, slackApi } from '@/lib/api';
+import { jobsApi, sendersApi } from '@/lib/api';
 import type { EmailJob, QueueStats } from '@/lib/types';
 import { ComposeModal } from '@/components/ComposeModal';
-import { SlackModal } from '@/components/SlackModal';
+import { AddSenderModal } from '@/components/AddSenderModal';
 import { ScheduledEmailsTable } from '@/components/ScheduledEmailsTable';
 import { SentEmailsTable } from '@/components/SentEmailsTable';
 import { StatusBadge } from '@/components/ScheduledEmailsTable';
@@ -184,27 +184,24 @@ export default function DashboardPage() {
   const [senders, setSenders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [addSenderOpen, setAddSenderOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [esResults, setEsResults] = useState<EmailJob[] | null>(null);
   const [esLoading, setEsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [slackModalOpen, setSlackModalOpen] = useState(false);
-  const [slackConnected, setSlackConnected] = useState(false);
 
   const fetchData = useCallback(async (isManual = false) => {
     try {
-      const [sched, sent, sndrs, stats, slackInfo] = await Promise.all([
+      const [sched, sent, sndrs, stats] = await Promise.all([
         jobsApi.scheduled(),
         jobsApi.sent(),
         sendersApi.list(),
         jobsApi.stats(),
-        slackApi.getStatus().catch(() => ({ connected: false })),
       ]);
       setScheduledJobs(sched.jobs);
       setSentJobs(sent.jobs);
       setSenders(sndrs.senders);
       setQueueStats(stats.queue);
-      setSlackConnected(!!slackInfo.connected);
       if (isManual) {
         toast.success('Dashboard refreshed');
       }
@@ -226,13 +223,6 @@ export default function DashboardPage() {
 
   useEffect(() => { 
     fetchData(); 
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('slack_connected') === 'true') {
-        toast.success('Slack connected successfully!');
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    }
 
     // Auto-poll every 3 seconds to reflect scheduled/sent/queue state changes live
     const interval = setInterval(() => {
@@ -487,17 +477,6 @@ export default function DashboardPage() {
               </button>
             )}
             <div className="h-4 w-px bg-slate-200" />
-            <button
-              type="button"
-              onClick={() => setSlackModalOpen(true)}
-              className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900 border border-slate-200 px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 transition-all shadow-sm cursor-pointer"
-              title="Configure Slack rate-limit alerts"
-            >
-              <div className={`w-2 h-2 rounded-full ${slackConnected ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-300'}`} />
-              <span className="font-medium text-xs">
-                {slackConnected ? 'Slack: Connected' : 'Connect Slack'}
-              </span>
-            </button>
             <button
               type="button"
               onClick={handleManualRefresh}
@@ -833,15 +812,24 @@ export default function DashboardPage() {
               <Section
                 className="flex-1 min-h-0"
                 title="Configured Senders"
-                subtitle={`${senders.length} active Ethereal mail senders configured for campaign dispatch`}
+                subtitle={`${senders.length} active SMTP mail sender${senders.length === 1 ? '' : 's'} configured for campaign dispatch`}
                 action={
-                  <button
-                    type="button"
-                    onClick={() => setComposeOpen(true)}
-                    className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-semibold cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" /> Compose Email
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddSenderOpen(true)}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm shadow-emerald-500/20 cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Sender
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setComposeOpen(true)}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 cursor-pointer transition-colors"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" /> Compose Email
+                    </button>
+                  </div>
                 }
               >
                 {senders.length === 0 ? (
@@ -850,20 +838,20 @@ export default function DashboardPage() {
                     badge="Sender Profiles"
                     badgeColor="bg-emerald-50 text-emerald-700 border-emerald-200"
                     title="No Sender Identities Registered"
-                    description="Sender profiles manage the SMTP mailboxes and credentials used to deliver emails. Seed the database to auto-generate Ethereal sender accounts."
-                    actionText="Schedule New Campaign"
-                    actionIcon={<Edit3 className="w-4 h-4" />}
-                    onAction={() => setComposeOpen(true)}
+                    description="Connect your own SMTP mailbox (Gmail, Outlook, Yahoo, or Custom SMTP) to deliver scheduled emails directly to recipients' inboxes."
+                    actionText="Connect Sender Profile"
+                    actionIcon={<Plus className="w-4 h-4" />}
+                    onAction={() => setAddSenderOpen(true)}
                     features={[
                       {
-                        icon: '👥',
-                        title: 'Multi-Sender Rotation',
-                        desc: 'Distribute campaigns across multiple sender identities seamlessly.',
+                        icon: '📬',
+                        title: 'Direct Inbox Delivery',
+                        desc: 'Deliver outbound emails directly to recipients using your verified credentials.',
                       },
                       {
                         icon: '🔒',
-                        title: 'Isolated Credentials',
-                        desc: 'Dedicated Ethereal credentials per sender profile for testing.',
+                        title: 'AES-256 Encrypted',
+                        desc: 'All SMTP app passwords are encrypted at rest with industry-standard AES-256.',
                       },
                       {
                         icon: '⚡',
@@ -884,12 +872,12 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2 mb-0.5">
                               <h3 className="font-semibold text-slate-800 text-sm truncate">{s.name}</h3>
                               <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">
-                                Active
+                                {s.isVerified ? 'Verified' : 'Active'}
                               </span>
                             </div>
                             <p className="text-xs text-slate-500 font-mono truncate">{s.email}</p>
                             <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1">
-                              <span>SMTP Host: {s.smtpHost || 'smtp.ethereal.email'}</span>
+                              <span>SMTP Host: {s.smtpHost || 'Custom SMTP'}</span>
                               <span>· Port: {s.smtpPort || 587}</span>
                               {s.createdAt && <span>· Added: {format(new Date(s.createdAt), 'MMM d, yyyy')}</span>}
                             </div>
@@ -938,12 +926,16 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ── SLACK MODAL ────────────────────────────────────────────────────── */}
-      <SlackModal
-        isOpen={slackModalOpen}
-        onClose={() => setSlackModalOpen(false)}
-        onStatusChange={fetchData}
-      />
+      {/* ── ADD SENDER MODAL ────────────────────────────────────────────────── */}
+      {addSenderOpen && (
+        <AddSenderModal
+          onClose={() => setAddSenderOpen(false)}
+          onSuccess={() => {
+            setAddSenderOpen(false);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }

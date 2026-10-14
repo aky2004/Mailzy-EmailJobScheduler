@@ -6,13 +6,15 @@ export const EMAIL_QUEUE_NAME = 'email-dispatch';
 export interface EmailJobData {
   jobId: string;          // DB email_jobs.id
   campaignId: string;
+  userId: string;
   senderId: string;
   senderEmail: string;
   senderName: string;
-  senderEtherealUser: string;
-  senderEtherealPass: string;
-  senderSmtpHost: string;
-  senderSmtpPort: number;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;       // encrypted — decrypted by worker at dispatch time
+  smtpSecure: boolean;
   recipientEmail: string;
   recipientName?: string;
   subject: string;
@@ -26,10 +28,10 @@ const queueOptions: QueueOptions = {
     attempts: 3,
     backoff: {
       type: 'exponential',
-      delay: 5000, // 5s initial backoff
+      delay: 5000,
     },
-    removeOnComplete: { count: 1000, age: 7 * 24 * 3600 }, // keep 1000 or 7 days
-    removeOnFail: { count: 500, age: 30 * 24 * 3600 },    // keep 500 or 30 days
+    removeOnComplete: { count: 100, age: 3600 },
+    removeOnFail: { count: 100, age: 86400 },
   },
 };
 

@@ -3,11 +3,14 @@ import { Pool } from 'pg';
 import { env } from '../config/env';
 import * as schema from './schema';
 
+const isCloud = env.DATABASE_URL.includes('neon.tech') || env.DATABASE_URL.includes('sslmode=require');
+
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  max: 20,
+  ssl: isCloud ? { rejectUnauthorized: false } : undefined,
+  max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {

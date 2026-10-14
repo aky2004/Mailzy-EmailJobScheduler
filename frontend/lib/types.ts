@@ -12,7 +12,10 @@ export interface Sender {
   id: string;
   name: string;
   email: string;
-  isActive: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  isVerified: boolean;
   createdAt: string;
 }
 
@@ -107,4 +110,18 @@ export interface CreateCampaignPayload {
 
 export interface CreateSenderPayload {
   name: string;
+  email: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+  smtpSecure: boolean;
+}
+
+export interface TestSmtpPayload {
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+  smtpSecure: boolean;
 }

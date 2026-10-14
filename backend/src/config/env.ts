@@ -18,11 +18,8 @@ const envSchema = z.object({
   MAX_EMAILS_PER_HOUR: z.coerce.number().default(200),
   MAX_EMAILS_PER_HOUR_PER_SENDER: z.coerce.number().default(100),
 
-  // Ethereal SMTP (optional)
-  ETHEREAL_USER: z.string().optional(),
-  ETHEREAL_PASS: z.string().optional(),
-  ETHEREAL_SMTP_HOST: z.string().default('smtp.ethereal.email'),
-  ETHEREAL_SMTP_PORT: z.coerce.number().default(587),
+  // Encryption key for SMTP passwords at rest (min 32 chars)
+  ENCRYPTION_KEY: z.string().min(32),
 
   // Server
   PORT: z.coerce.number().default(4000),

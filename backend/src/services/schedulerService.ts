@@ -23,25 +23,18 @@ export interface ScheduleCampaignOptions {
 
 /**
  * Schedules all email jobs for a campaign.
- *
  * Each recipient gets a BullMQ delayed job with:
  *   delay = (scheduledAt + index * delayBetweenMs) - now
- *
- * Jobs are idempotent via bullJobId = campaign_{id}_recipient_{email}
- *
- * BullMQ persists delayed jobs in Redis sorted sets; they survive server restarts.
  */
 export async function scheduleCampaign(opts: ScheduleCampaignOptions): Promise<void> {
   const { campaignId, senderId, subject, body, recipients, scheduledAt, delayBetweenMs, hourlyLimit } = opts;
 
-  // Fetch sender details
   const [sender] = await db.select().from(senders).where(eq(senders.id, senderId)).limit(1);
   if (!sender) throw new Error(`Sender ${senderId} not found`);
 
   const now = Date.now();
   const scheduledAtMs = scheduledAt.getTime();
 
-  // Mark campaign as scheduled (worker will flip it to 'running' when first job fires)
   await db.update(campaigns)
     .set({ status: 'scheduled', updatedAt: new Date() })
     .where(eq(campaigns.id, campaignId));
@@ -52,9 +45,8 @@ export async function scheduleCampaign(opts: ScheduleCampaignOptions): Promise<v
     const delay = Math.max(0, fireAt - now);
     const bullJobId = `campaign_${campaignId}_recipient_${recipient.email.replace(/[^a-zA-Z0-9]/g, '_')}_${i}`;
 
-    // Create DB record for this job
     const dbJobId = uuidv4();
-    
+
     await db.insert(emailJobs).values({
       id: dbJobId,
       campaignId,
@@ -63,19 +55,20 @@ export async function scheduleCampaign(opts: ScheduleCampaignOptions): Promise<v
       status: 'pending',
       scheduledAt: new Date(fireAt),
       bullJobId,
-    }).onConflictDoNothing(); // Idempotent: skip if bullJobId already exists
+    }).onConflictDoNothing();
 
-    // Schedule BullMQ delayed job
     const jobData: EmailJobData = {
       jobId: dbJobId,
       campaignId,
+      userId: sender.userId,
       senderId,
       senderEmail: sender.email,
       senderName: sender.name,
-      senderEtherealUser: sender.etherealUser,
-      senderEtherealPass: sender.etherealPass,
-      senderSmtpHost: sender.smtpHost,
-      senderSmtpPort: sender.smtpPort,
+      smtpHost: sender.smtpHost,
+      smtpPort: sender.smtpPort,
+      smtpUser: sender.smtpUser,
+      smtpPass: sender.smtpPass, // stored encrypted, decrypted in worker
+      smtpSecure: sender.smtpSecure,
       recipientEmail: recipient.email,
       recipientName: recipient.name,
       subject,
@@ -85,7 +78,7 @@ export async function scheduleCampaign(opts: ScheduleCampaignOptions): Promise<v
 
     await emailQueue.add('send-email', jobData, {
       delay,
-      jobId: bullJobId, // Idempotent: BullMQ deduplicates by jobId
+      jobId: bullJobId,
     });
 
     // Index into Elasticsearch

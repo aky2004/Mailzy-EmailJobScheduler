@@ -33,14 +33,17 @@ export const users = pgTable('users', {
 
 export const senders = pgTable('senders', {
   id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }).unique().notNull(),
-  etherealUser: varchar('ethereal_user', { length: 255 }).notNull(),
-  etherealPass: varchar('ethereal_pass', { length: 255 }).notNull(),
-  smtpHost: varchar('smtp_host', { length: 255 }).default('smtp.ethereal.email').notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  smtpHost: varchar('smtp_host', { length: 255 }).notNull(),
   smtpPort: integer('smtp_port').default(587).notNull(),
-  isActive: boolean('is_active').default(true).notNull(),
+  smtpUser: varchar('smtp_user', { length: 255 }).notNull(),
+  smtpPass: varchar('smtp_pass', { length: 512 }).notNull(), // AES-256 encrypted
+  smtpSecure: boolean('smtp_secure').default(false).notNull(),
+  isVerified: boolean('is_verified').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const campaigns = pgTable('campaigns', {
@@ -81,30 +84,15 @@ export const emailJobs = pgTable('email_jobs', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const slackConnections = pgTable('slack_connections', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull().unique(),
-  accessToken: varchar('access_token', { length: 512 }).notNull(),
-  teamId: varchar('team_id', { length: 128 }),
-  teamName: varchar('team_name', { length: 255 }),
-  webhookUrl: text('webhook_url'),
-  channelId: varchar('channel_id', { length: 128 }),
-  channelName: varchar('channel_name', { length: 255 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
 // ─── Relations ────────────────────────────────────────────────────────────────
 
-export const usersRelations = relations(users, ({ one, many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
   campaigns: many(campaigns),
-  slackConnection: one(slackConnections, {
-    fields: [users.id],
-    references: [slackConnections.userId],
-  }),
+  senders: many(senders),
 }));
 
-export const sendersRelations = relations(senders, ({ many }) => ({
+export const sendersRelations = relations(senders, ({ one, many }) => ({
+  user: one(users, { fields: [senders.userId], references: [users.id] }),
   campaigns: many(campaigns),
 }));
 

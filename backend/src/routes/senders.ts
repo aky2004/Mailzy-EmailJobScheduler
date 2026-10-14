@@ -1,26 +1,32 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { db } from '../db';
-import { eq, ne } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import { senders, campaigns } from '../db/schema';
-import { createDefaultEtherealAccount } from '../services/emailService';
+import { testSmtpConnection } from '../services/emailService';
+import { encrypt, decrypt } from '../utils/crypto';
 import { z } from 'zod';
 
 const router = Router();
 
 /**
  * GET /api/senders
- * List all active senders.
+ * List senders belonging to the authenticated user. Never exposes smtpPass.
  */
-router.get('/', authenticate, async (_req: Request, res: Response) => {
+router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const allSenders = await db.select({
       id: senders.id,
       name: senders.name,
       email: senders.email,
-      isActive: senders.isActive,
+      smtpHost: senders.smtpHost,
+      smtpPort: senders.smtpPort,
+      smtpSecure: senders.smtpSecure,
+      isVerified: senders.isVerified,
       createdAt: senders.createdAt,
-    }).from(senders).orderBy(senders.createdAt);
+    }).from(senders)
+      .where(eq(senders.userId, req.user!.dbId))
+      .orderBy(senders.createdAt);
 
     res.json({ senders: allSenders });
   } catch (error) {
@@ -31,15 +37,40 @@ router.get('/', authenticate, async (_req: Request, res: Response) => {
 
 const createSenderSchema = z.object({
   name: z.string().min(1).max(255),
-  // If email/credentials are provided, use them; otherwise auto-create Ethereal
-  email: z.string().email().optional(),
-  etherealUser: z.string().optional(),
-  etherealPass: z.string().optional(),
+  email: z.string().email(),
+  smtpHost: z.string().min(1),
+  smtpPort: z.coerce.number().min(1).max(65535),
+  smtpUser: z.string().min(1),
+  smtpPass: z.string().min(1),
+  smtpSecure: z.boolean().default(false),
+});
+
+/**
+ * POST /api/senders/test
+ * Test SMTP connection without saving.
+ */
+router.post('/test', authenticate, async (req: Request, res: Response) => {
+  const parsed = createSenderSchema.omit({ name: true, email: true }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const { smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure } = parsed.data;
+  const result = await testSmtpConnection({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    user: smtpUser,
+    pass: smtpPass,
+  });
+
+  res.json(result);
 });
 
 /**
  * POST /api/senders
- * Create a new sender. If no credentials, auto-creates Ethereal account.
+ * Create a new sender. Tests SMTP credentials, encrypts password, saves under the user.
  */
 router.post('/', authenticate, async (req: Request, res: Response) => {
   const parsed = createSenderSchema.safeParse(req.body);
@@ -48,26 +79,46 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     return;
   }
 
-  try {
-    let { name, email, etherealUser, etherealPass } = parsed.data;
+  const { name, email, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure } = parsed.data;
 
-    if (!email || !etherealUser || !etherealPass) {
-      const account = await createDefaultEtherealAccount();
-      email = account.email;
-      etherealUser = account.user;
-      etherealPass = account.pass;
-    }
+  try {
+    // Verify credentials before saving
+    const testResult = await testSmtpConnection({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      user: smtpUser,
+      pass: smtpPass,
+    });
+
+    const encryptedPass = encrypt(smtpPass);
 
     const [sender] = await db.insert(senders).values({
+      userId: req.user!.dbId,
       name,
       email,
-      etherealUser,
-      etherealPass,
-      smtpHost: 'smtp.ethereal.email',
-      smtpPort: 587,
-    }).returning();
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPass: encryptedPass,
+      smtpSecure,
+      isVerified: testResult.success,
+    }).returning({
+      id: senders.id,
+      name: senders.name,
+      email: senders.email,
+      smtpHost: senders.smtpHost,
+      smtpPort: senders.smtpPort,
+      smtpSecure: senders.smtpSecure,
+      isVerified: senders.isVerified,
+      createdAt: senders.createdAt,
+    });
 
-    res.status(201).json({ sender });
+    res.status(201).json({
+      sender,
+      verified: testResult.success,
+      verifyError: testResult.error,
+    });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: errMsg });
@@ -76,22 +127,27 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/senders/:id
- * Delete a configured sender. Reassigns campaigns to another sender if needed.
+ * Delete a sender belonging to the authenticated user.
  */
 router.delete('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
-    const [sender] = await db.select().from(senders).where(eq(senders.id, id)).limit(1);
+    const [sender] = await db.select().from(senders)
+      .where(and(eq(senders.id, id), eq(senders.userId, req.user!.dbId)))
+      .limit(1);
+
     if (!sender) {
       res.status(404).json({ error: 'Sender not found' });
       return;
     }
 
-    // Reassign existing campaigns pointing to this sender to another active sender if available
-    const otherSenders = await db.select().from(senders).where(ne(senders.id, id)).limit(1);
+    // Reassign campaigns to another sender if available
+    const otherSenders = await db.select().from(senders)
+      .where(and(ne(senders.id, id), eq(senders.userId, req.user!.dbId)))
+      .limit(1);
+
     if (otherSenders.length > 0) {
-      await db
-        .update(campaigns)
+      await db.update(campaigns)
         .set({ senderId: otherSenders[0].id })
         .where(eq(campaigns.senderId, id));
     }

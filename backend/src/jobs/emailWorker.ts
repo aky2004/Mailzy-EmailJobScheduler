@@ -4,23 +4,16 @@ import { env } from '../config/env';
 import { EMAIL_QUEUE_NAME, EmailJobData, emailQueue } from './emailQueue';
 import { sendEmail } from '../services/emailService';
 import { checkRateLimit } from '../services/rateLimiter';
+import { decrypt } from '../utils/crypto';
 import { db } from '../db';
-import { emailJobs, campaigns, slackConnections } from '../db/schema';
-import { eq, sql, and, inArray, or } from 'drizzle-orm';
+import { emailJobs, campaigns } from '../db/schema';
+import { eq, sql, and, or } from 'drizzle-orm';
 import { esClient, ES_INDEX } from '../config/es';
 
 /**
  * BullMQ Worker for processing email send jobs.
  *
- * Rate limiting:
- *   - Checks Redis per-sender hourly counter atomically via Lua script.
- *   - If limit exceeded: re-queues job with delay to next hour window (job is never dropped).
- *
- * Idempotency:
- *   - Checks DB job status before sending; skips if already sent.
- *
- * Min delay between sends:
- *   - Enforced via BullMQ's limiter option (max 1 job per MIN_DELAY_MS globally per worker).
+ * Decrypts SMTP credentials at dispatch time and sends via the user's own mailbox.
  */
 export function startEmailWorker(): Worker {
   const worker = new Worker<EmailJobData>(
@@ -69,50 +62,30 @@ export function startEmailWorker(): Worker {
           `⏳ Rate limit hit for sender ${data.senderEmail}. Requeueing in ${rateLimitResult.retryAfterMs}ms`
         );
 
-        // Re-add job with delay to next hour window.
-        // Use a deterministic jobId based on the original jobId + hour window,
-        // so that recovery scans don't create a second copy of the retry.
         const hourWindow = Math.floor(Date.now() / (60 * 60 * 1000));
         const retryJobId = `retry-${data.jobId}-h${hourWindow}`;
         await emailQueue.add(
           'send-email',
-          { ...data, jobId: data.jobId }, // preserve original DB jobId
+          { ...data, jobId: data.jobId },
           {
             delay: rateLimitResult.retryAfterMs,
             jobId: retryJobId,
           }
         );
 
-        // Mark as rate_limited in DB
         await db
           .update(emailJobs)
           .set({ status: 'rate_limited', updatedAt: new Date() })
           .where(eq(emailJobs.id, data.jobId));
 
-        // Trigger Slack Notification
-        try {
-          const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, data.campaignId)).limit(1);
-          if (campaign) {
-            const [slackConn] = await db.select().from(slackConnections).where(eq(slackConnections.userId, campaign.userId)).limit(1);
-            if (slackConn && slackConn.webhookUrl) {
-              await fetch(slackConn.webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  text: `⚠️ *Rate Limit Exceeded*\nSender *${data.senderEmail}* has reached the limit of ${data.hourlyLimit} emails/hour.\nJob \`${data.jobId}\` was rescheduled by ${Math.ceil(rateLimitResult.retryAfterMs / 1000)} seconds.`
-                })
-              }).catch(e => console.error('Slack HTTP error:', e));
-            }
-          }
-        } catch (slackErr) {
-          console.error('Failed to send slack notification', slackErr);
-        }
-
-        return; // Do NOT throw — this is successful handling
+        return;
       }
 
       // ── Send email ────────────────────────────────────────────────────
       try {
+        // Decrypt the SMTP password at dispatch time
+        const smtpPass = decrypt(data.smtpPass);
+
         const result = await sendEmail({
           to: data.recipientEmail,
           toName: data.recipientName,
@@ -120,10 +93,11 @@ export function startEmailWorker(): Worker {
           fromName: data.senderName,
           subject: data.subject,
           html: data.body,
-          smtpUser: data.senderEtherealUser,
-          smtpPass: data.senderEtherealPass,
-          smtpHost: data.senderSmtpHost,
-          smtpPort: data.senderSmtpPort,
+          smtpHost: data.smtpHost,
+          smtpPort: data.smtpPort,
+          smtpUser: data.smtpUser,
+          smtpPass,
+          smtpSecure: data.smtpSecure,
         });
 
         // ── Update DB: success ─────────────────────────────────────────
@@ -134,7 +108,6 @@ export function startEmailWorker(): Worker {
             status: 'sent',
             sentAt,
             messageId: result.messageId,
-            previewUrl: result.previewUrl ? String(result.previewUrl) : null,
             updatedAt: new Date(),
           })
           .where(eq(emailJobs.id, data.jobId));
@@ -147,7 +120,6 @@ export function startEmailWorker(): Worker {
           });
         } catch (e) { console.error('ES update error:', e); }
 
-        // Check if campaign is complete
         await checkAndUpdateCampaignStatus(data.campaignId);
 
       } catch (error: unknown) {
@@ -171,13 +143,12 @@ export function startEmailWorker(): Worker {
           });
         } catch (e) { console.error('ES update error:', e); }
 
-        throw error; // Re-throw so BullMQ handles retries
+        throw error;
       }
     },
     {
       connection: createBullMQConnection(),
       concurrency: env.WORKER_CONCURRENCY,
-      // Rate limiter: minimum delay between individual sends per worker
       limiter: {
         max: 1,
         duration: env.MIN_DELAY_MS,
@@ -205,8 +176,7 @@ export function startEmailWorker(): Worker {
 }
 
 /**
- * After a job completes, check if all jobs in the campaign are done
- * and update campaign status accordingly.
+ * Check if all jobs in a campaign are done and update campaign status.
  */
 async function checkAndUpdateCampaignStatus(campaignId: string): Promise<void> {
   const [campaign] = await db

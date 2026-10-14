@@ -18,7 +18,6 @@ import campaignRoutes from './routes/campaigns';
 import jobRoutes from './routes/jobs';
 import senderRoutes from './routes/senders';
 import searchRoutes from './routes/search';
-import slackRoutes from './routes/slack';
 
 const app = express();
 
@@ -76,7 +75,6 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/senders', senderRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/slack', slackRoutes);
 
 // 404 handler
 app.use((_req: express.Request, res: express.Response) => {
