@@ -15,14 +15,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && firebaseUser) {
-      router.replace('/dashboard');
+      router.replace('/');
     }
   }, [firebaseUser, loading, router]);
 
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
-      router.push('/dashboard');
+      router.push('/');
     } catch (err) {
       console.error(err);
       toast.error('Sign-in failed. Please try again.');
