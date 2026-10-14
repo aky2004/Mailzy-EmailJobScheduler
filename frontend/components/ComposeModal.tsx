@@ -255,21 +255,21 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
   return (
     <div
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/20 backdrop-blur-[2px] transition-all animate-fadein font-sans"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm transition-all animate-fadein font-sans"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-4xl h-[84vh] max-h-[720px] min-h-[540px] rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden animate-fadein relative"
+        className="bg-[#1E1E1E] w-full max-w-4xl h-[84vh] max-h-[720px] min-h-[540px] rounded-2xl shadow-2xl border border-[#3E3F3E] flex flex-col overflow-hidden animate-fadein relative text-[#F0F2F0]"
       >
         {/* TOP HEADER */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 shrink-0 bg-white">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-[#3E3F3E] shrink-0 bg-[#1E1E1E]">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-[#54C750]/15 border border-[#54C750]/30 text-[#54C750] flex items-center justify-center font-bold text-xs shadow-sm">
               <Mail className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 leading-none">Compose Campaign</h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">Draft auto-saved locally</p>
+              <h2 className="text-sm font-bold text-[#F0F2F0] leading-none">Compose Campaign</h2>
+              <p className="text-[11px] text-[#5B5B5B] mt-0.5">Draft auto-saved locally</p>
             </div>
           </div>
 
@@ -277,7 +277,7 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
             <button
               type="button"
               onClick={handleReset}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-[#3E3F3E] hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm"
               title="Reset and clear all inputs in this compose container"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Reset Form
@@ -288,7 +288,7 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
                 saveDraft();
                 onClose();
               }}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-[#5B5B5B] hover:text-[#F0F2F0] hover:bg-[#2A2A2A] rounded-lg transition-colors cursor-pointer"
               title="Close (auto-saves draft)"
             >
               <X className="w-5 h-5" />
@@ -299,15 +299,15 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
         {/* MAIN CONTENT SPLIT */}
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* LEFT PANE - COMPOSER (Single Unified Scroll for To, Subject, Dynamic Body, and Attachments) */}
-          <div className="flex-1 flex flex-col overflow-y-auto border-r border-slate-100 p-6 min-h-0 space-y-4">
+          <div className="flex-1 flex flex-col overflow-y-auto border-r border-[#3E3F3E] p-6 min-h-0 space-y-4 bg-[#1E1E1E]">
             {/* To Field */}
-            <div className="flex items-start border-b border-slate-100 pb-3">
-              <div className="w-16 text-sm font-medium text-slate-500 pt-1 shrink-0">To:</div>
+            <div className="flex items-start border-b border-[#3E3F3E]/60 pb-3">
+              <div className="w-16 text-sm font-medium text-[#5B5B5B] pt-1 shrink-0">To:</div>
               <div className="flex-1 flex flex-wrap gap-1.5 items-center">
                 {recipients.map((rec, i) => (
-                  <div key={i} className="flex items-center gap-1.5 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200">
+                  <div key={i} className="flex items-center gap-1.5 bg-[#282828] text-[#F0F2F0] px-2.5 py-1 rounded-lg text-xs font-medium border border-[#3E3F3E]">
                     <span>{rec.email}</span>
-                    <button type="button" onClick={() => removeRecipient(i)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <button type="button" onClick={() => removeRecipient(i)} className="text-[#5B5B5B] hover:text-red-400 cursor-pointer">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -318,13 +318,13 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
                   onChange={(e) => setRecipientInput(e.target.value)}
                   onKeyDown={handleRecipientKeyDown}
                   placeholder={recipients.length === 0 ? "Add recipients..." : "Add more..."}
-                  className="flex-1 min-w-[160px] py-1 text-sm font-normal outline-none bg-transparent placeholder:text-slate-400 text-slate-800 font-sans"
+                  className="flex-1 min-w-[160px] py-1 text-sm font-normal outline-none bg-transparent placeholder:text-[#5B5B5B] text-[#F0F2F0] font-sans"
                 />
               </div>
               <button 
                 type="button"
                 onClick={() => csvInputRef.current?.click()}
-                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 ml-3 shrink-0 flex items-center gap-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100/80 px-2.5 py-1 rounded-lg transition-colors mt-0.5"
+                className="text-xs font-semibold text-[#54C750] hover:text-[#46af42] ml-3 shrink-0 flex items-center gap-1 cursor-pointer bg-[#54C750]/15 hover:bg-[#54C750]/25 border border-[#54C750]/30 px-2.5 py-1 rounded-lg transition-colors mt-0.5"
                 title="Import recipients from CSV"
               >
                 <CloudUpload className="w-3.5 h-3.5" /> CSV
@@ -342,42 +342,42 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
             </div>
 
             {/* Subject Field */}
-            <div className="flex items-center border-b border-slate-100 pb-3 shrink-0">
-              <div className="w-16 text-sm font-medium text-slate-500 shrink-0">Subject:</div>
+            <div className="flex items-center border-b border-[#3E3F3E]/60 pb-3 shrink-0">
+              <div className="w-16 text-sm font-medium text-[#5B5B5B] shrink-0">Subject:</div>
               <input 
                 type="text" 
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Enter subject line..."
-                className="flex-1 py-1 text-sm font-normal outline-none bg-transparent placeholder:text-slate-400 text-slate-800 font-sans"
+                className="flex-1 py-1 text-sm font-normal outline-none bg-transparent placeholder:text-[#5B5B5B] text-[#F0F2F0] font-sans"
                 maxLength={100}
               />
-              <div className="text-[11px] font-medium text-slate-400 ml-3 shrink-0">{subject.length}/100</div>
+              <div className="text-[11px] font-medium text-[#5B5B5B] ml-3 shrink-0">{subject.length}/100</div>
             </div>
 
             {/* Editor & Attachments Merged Container (Expands Dynamically) */}
-            <div className="w-full flex flex-col border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white shrink-0">
+            <div className="w-full flex flex-col border border-[#3E3F3E] rounded-xl overflow-hidden shadow-sm bg-[#161616] shrink-0">
               {/* Toolbar */}
-              <div className="flex items-center gap-1 p-1.5 border-b border-slate-100 bg-slate-50/70 flex-wrap shrink-0">
-                <button type="button" className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 rounded transition-colors mr-1">
-                  Normal Text <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <div className="flex items-center gap-1 p-1.5 border-b border-[#3E3F3E] bg-[#222222] flex-wrap shrink-0">
+                <button type="button" className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-[#333333] rounded transition-colors mr-1">
+                  Normal Text <ChevronDown className="w-3.5 h-3.5 text-[#5B5B5B]" />
                 </button>
-                <div className="w-px h-4 bg-slate-300 mx-1"></div>
-                <button type="button" onClick={() => handleFormat('bold')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Bold"><Bold className="w-3.5 h-3.5" /></button>
-                <button type="button" onClick={() => handleFormat('italic')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Italic"><Italic className="w-3.5 h-3.5" /></button>
-                <button type="button" onClick={() => handleFormat('underline')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Underline"><Underline className="w-3.5 h-3.5" /></button>
-                <button type="button" onClick={() => handleFormat('strikeThrough')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Strikethrough"><Strikethrough className="w-3.5 h-3.5" /></button>
-                <div className="w-px h-4 bg-slate-300 mx-1"></div>
-                <button type="button" onClick={() => handleFormat('insertUnorderedList')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Bullet List"><List className="w-3.5 h-3.5" /></button>
-                <button type="button" onClick={() => handleFormat('insertOrderedList')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Numbered List"><ListOrdered className="w-3.5 h-3.5" /></button>
-                <div className="w-px h-4 bg-slate-300 mx-1"></div>
+                <div className="w-px h-4 bg-[#3E3F3E] mx-1"></div>
+                <button type="button" onClick={() => handleFormat('bold')} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Bold"><Bold className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('italic')} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Italic"><Italic className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('underline')} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Underline"><Underline className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('strikeThrough')} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Strikethrough"><Strikethrough className="w-3.5 h-3.5" /></button>
+                <div className="w-px h-4 bg-[#3E3F3E] mx-1"></div>
+                <button type="button" onClick={() => handleFormat('insertUnorderedList')} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Bullet List"><List className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('insertOrderedList')} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Numbered List"><ListOrdered className="w-3.5 h-3.5" /></button>
+                <div className="w-px h-4 bg-[#3E3F3E] mx-1"></div>
                 <button type="button" onClick={() => {
                   const url = prompt('Enter link URL:');
                   if (url) handleFormat('createLink', url);
-                }} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Insert Link"><Link className="w-3.5 h-3.5" /></button>
-                <button type="button" onClick={() => handleFormat('formatBlock', 'PRE')} className="p-1 text-slate-600 hover:bg-slate-200 rounded transition-colors cursor-pointer" title="Insert Code Block"><Code className="w-3.5 h-3.5" /></button>
+                }} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Insert Link"><Link className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => handleFormat('formatBlock', 'PRE')} className="p-1 text-zinc-400 hover:text-[#F0F2F0] hover:bg-[#333333] rounded transition-colors cursor-pointer" title="Insert Code Block"><Code className="w-3.5 h-3.5" /></button>
                 <div className="flex-1"></div>
-                <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-semibold rounded hover:bg-emerald-100 transition-colors">
+                <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-[#54C750]/15 text-[#54C750] border border-[#54C750]/30 text-xs font-semibold rounded hover:bg-[#54C750]/25 transition-colors">
                   <span className="font-mono">{'{}'}</span> Variables
                 </button>
               </div>
@@ -386,22 +386,22 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
               <div 
                 id="rich-editor"
                 contentEditable
-                className="w-full max-w-full min-h-[180px] p-4 text-sm font-normal text-slate-800 font-sans outline-none leading-relaxed focus:ring-0 break-words whitespace-pre-wrap [overflow-wrap:anywhere] overflow-x-hidden [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&_a]:text-emerald-600 [&_a]:underline"
+                className="w-full max-w-full min-h-[180px] p-4 text-sm font-normal text-[#F0F2F0] bg-[#161616] font-sans outline-none leading-relaxed focus:ring-0 break-words whitespace-pre-wrap [overflow-wrap:anywhere] overflow-x-hidden [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&_a]:text-[#54C750] [&_a]:underline"
                 onInput={(e) => setBody(e.currentTarget.innerHTML)}
               />
               
               {/* Attachments List */}
               {attachments.length > 0 && (
-                <div className="px-4 pb-2 pt-1.5 flex flex-wrap gap-2 border-t border-slate-100 mt-auto shrink-0">
+                <div className="px-4 pb-2 pt-1.5 flex flex-wrap gap-2 border-t border-[#3E3F3E] mt-auto shrink-0 bg-[#1a1a1a]">
                   {attachments.map((file, i) => (
-                    <div key={i} className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-xs animate-fadein">
-                      <Paperclip className="w-3 h-3 text-slate-400" />
-                      <span className="text-slate-700 max-w-[120px] truncate" title={file.name}>{file.name}</span>
-                      <span className="text-[10px] text-slate-400">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
+                    <div key={i} className="flex items-center gap-1.5 bg-[#282828] border border-[#3E3F3E] rounded-lg px-2.5 py-1 text-xs animate-fadein">
+                      <Paperclip className="w-3 h-3 text-[#5B5B5B]" />
+                      <span className="text-[#F0F2F0] max-w-[120px] truncate" title={file.name}>{file.name}</span>
+                      <span className="text-[10px] text-[#5B5B5B]">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
                       <button 
                         type="button"
                         onClick={() => removeAttachment(i)}
-                        className="ml-0.5 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                        className="ml-0.5 text-[#5B5B5B] hover:text-red-400 transition-colors cursor-pointer"
                         title="Remove attachment"
                       >
                         <X className="w-3 h-3" />
@@ -413,7 +413,7 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
               
               {/* Merged Attachments Dropzone */}
               <div 
-                className="border-t border-slate-100 bg-slate-50/80 px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-all text-slate-500 shrink-0"
+                className="border-t border-[#3E3F3E] bg-[#1c1c1c] px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-[#242424] transition-all text-zinc-400 shrink-0"
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
@@ -422,14 +422,14 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
                 }}
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
+                  <div className="w-6 h-6 bg-[#54C750]/15 border border-[#54C750]/30 rounded-full flex items-center justify-center text-[#54C750]">
                     <CloudUpload className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-slate-700">Attach files or drag & drop</p>
+                    <p className="text-xs font-medium text-zinc-300">Attach files or drag & drop</p>
                   </div>
                 </div>
-                <span className="text-[11px] text-slate-400">Up to 10MB</span>
+                <span className="text-[11px] text-[#5B5B5B]">Up to 10MB</span>
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -442,30 +442,30 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
           </div>
 
           {/* RIGHT PANE - SETTINGS */}
-          <div className="w-72 bg-slate-50 border-l border-slate-100 flex flex-col p-5 overflow-y-auto shrink-0">
+          <div className="w-72 bg-[#171717] border-l border-[#3E3F3E] flex flex-col p-5 overflow-y-auto shrink-0">
             {/* Schedule Settings */}
             <div className="mb-5">
-              <h3 className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">
-                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+              <h3 className="flex items-center gap-2 text-xs font-bold text-[#F0F2F0] uppercase tracking-wider mb-3">
+                <Calendar className="w-3.5 h-3.5 text-[#54C750]" />
                 Schedule Settings
               </h3>
-              <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm">
+              <div className="bg-[#1E1E1E] border border-[#3E3F3E] rounded-xl p-3 space-y-3 shadow-sm">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Send Date</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1">Send Date</label>
                   <input 
                     type="date" 
                     value={sendDate}
                     onChange={(e) => setSendDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 font-sans"
+                    className="w-full bg-[#262626] border border-[#3E3F3E] rounded-lg px-2.5 py-1.5 text-xs text-[#F0F2F0] outline-none focus:border-[#54C750] focus:ring-1 focus:ring-[#54C750]/30 font-sans"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Send Time</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1">Send Time</label>
                   <input 
                     type="time" 
                     value={sendTime}
                     onChange={(e) => setSendTime(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 font-sans"
+                    className="w-full bg-[#262626] border border-[#3E3F3E] rounded-lg px-2.5 py-1.5 text-xs text-[#F0F2F0] outline-none focus:border-[#54C750] focus:ring-1 focus:ring-[#54C750]/30 font-sans"
                   />
                 </div>
               </div>
@@ -473,15 +473,15 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
 
             {/* Job Configuration */}
             <div className="mb-5">
-              <h3 className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <h3 className="flex items-center gap-2 text-xs font-bold text-[#F0F2F0] uppercase tracking-wider mb-3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#54C750]"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 Job Limits
               </h3>
-              <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm">
+              <div className="bg-[#1E1E1E] border border-[#3E3F3E] rounded-xl p-3 space-y-3 shadow-sm">
                 <div>
                   <div className="flex justify-between items-end mb-1">
-                    <label className="block text-xs font-medium text-slate-500">Delay Between Sends</label>
-                    <span className="text-xs font-bold text-emerald-600">{delayBetweenMs / 1000}s</span>
+                    <label className="block text-xs font-medium text-zinc-400">Delay Between Sends</label>
+                    <span className="text-xs font-bold text-[#54C750]">{delayBetweenMs / 1000}s</span>
                   </div>
                   <input
                     type="range"
@@ -490,13 +490,13 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
                     step={500}
                     value={delayBetweenMs}
                     onChange={(e) => setDelayBetweenMs(Number(e.target.value))}
-                    className="w-full accent-emerald-500 cursor-pointer"
+                    className="w-full accent-[#54C750] cursor-pointer"
                   />
                 </div>
                 <div>
                   <div className="flex justify-between items-end mb-1">
-                    <label className="block text-xs font-medium text-slate-500">Hourly Limit</label>
-                    <span className="text-xs font-bold text-emerald-600">{hourlyLimit}/hr</span>
+                    <label className="block text-xs font-medium text-zinc-400">Hourly Limit</label>
+                    <span className="text-xs font-bold text-[#54C750]">{hourlyLimit}/hr</span>
                   </div>
                   <input
                     type="range"
@@ -505,35 +505,35 @@ export function ComposeModal({ senders, onClose, onSuccess }: ComposeModalProps)
                     step={1}
                     value={hourlyLimit}
                     onChange={(e) => setHourlyLimit(Number(e.target.value))}
-                    className="w-full accent-emerald-500 cursor-pointer"
+                    className="w-full accent-[#54C750] cursor-pointer"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Sender Identity</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1">Sender Identity</label>
                   <div className="relative">
                     <select 
                       value={selectedSenderId}
                       onChange={(e) => setSelectedSenderId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 appearance-none cursor-pointer font-sans"
+                      className="w-full bg-[#262626] border border-[#3E3F3E] rounded-lg px-2.5 py-1.5 text-xs text-[#F0F2F0] outline-none focus:border-[#54C750] focus:ring-1 focus:ring-[#54C750]/30 appearance-none cursor-pointer font-sans"
                     >
                       {senders.length === 0 ? (
-                        <option value="">No senders available</option>
+                        <option value="" className="bg-[#1E1E1E] text-zinc-400">No senders available</option>
                       ) : (
-                        senders.map(s => <option key={s.id} value={s.id}>{s.name ? `${s.name} <${s.email}>` : s.email}</option>)
+                        senders.map(s => <option key={s.id} value={s.id} className="bg-[#1E1E1E] text-[#F0F2F0]">{s.name ? `${s.name} <${s.email}>` : s.email}</option>)
                       )}
                     </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-3.5 h-3.5 text-[#5B5B5B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-auto pt-3 border-t border-slate-200">
+            <div className="mt-auto pt-3 border-t border-[#3E3F3E]">
               <button 
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs transition-colors shadow-sm shadow-emerald-500/25 disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#54C750] hover:bg-[#46af42] text-[#060C06] font-bold text-xs transition-colors shadow-lg shadow-[#54C750]/20 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 Schedule Campaign

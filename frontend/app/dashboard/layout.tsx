@@ -17,10 +17,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4fcf9]">
+      <div className="min-h-screen flex items-center justify-center bg-[#060C06]">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-3" style={{ color: 'var(--accent)' }} />
-          <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-3 text-[#54C750]" />
+          <p className="text-xs text-[#8E8E8E] font-medium">Connecting to Mailzy...</p>
         </div>
       </div>
     );
@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!firebaseUser) return null;
 
   return (
-    <div className="h-screen w-full bg-white overflow-hidden">
+    <div className="h-screen w-full bg-[#060C06] overflow-hidden">
       {children}
     </div>
   );

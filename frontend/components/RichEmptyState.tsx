@@ -23,7 +23,7 @@ export interface RichEmptyStateProps {
 export function RichEmptyState({
   icon,
   badge,
-  badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  badgeColor = 'bg-[#54C750]/15 text-[#54C750] border-[#54C750]/30',
   title,
   description,
   actionText,
@@ -32,24 +32,24 @@ export function RichEmptyState({
   features,
 }: RichEmptyStateProps) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center max-w-2xl mx-auto my-auto animate-fadein">
-      {/* Icon Badge */}
-      <div className="relative mb-5 group">
-        <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-emerald-100 to-teal-100 opacity-60 blur-lg group-hover:opacity-80 transition-opacity" />
-        <div className="relative w-20 h-20 rounded-3xl bg-white border border-slate-200/80 flex items-center justify-center shadow-md shadow-slate-200/50">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center max-w-3xl mx-auto my-auto animate-fadein">
+      {/* Icon Badge with Ambient Glow */}
+      <div className="relative mb-4 group">
+        <div className="absolute -inset-3 rounded-2xl bg-gradient-to-r from-[#54C750]/20 to-emerald-500/10 opacity-60 blur-xl group-hover:opacity-100 transition-opacity" />
+        <div className="relative w-16 h-16 rounded-2xl bg-[#181818] border border-[#3E3F3E] flex items-center justify-center shadow-xl shadow-black/80">
           {icon}
         </div>
       </div>
 
       {/* Pill Badge */}
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border mb-3 ${badgeColor}`}>
-        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80 animate-pulse" />
+      <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-semibold border mb-2.5 ${badgeColor}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-90 animate-pulse" />
         {badge}
       </span>
 
       {/* Title & Description */}
-      <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2 tracking-tight">{title}</h3>
-      <p className="text-sm text-slate-500 max-w-lg leading-relaxed mb-6">
+      <h3 className="text-lg sm:text-xl font-bold text-[#F0F2F0] mb-2 tracking-tight">{title}</h3>
+      <p className="text-xs text-[#8E8E8E] max-w-md leading-relaxed mb-6 font-normal">
         {description}
       </p>
 
@@ -58,7 +58,7 @@ export function RichEmptyState({
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm shadow-emerald-500/25 transition-all cursor-pointer text-sm mb-8 hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex items-center gap-2 bg-[#54C750] hover:bg-[#46af42] text-[#060C06] font-bold px-5 py-2.5 rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_14px_rgba(84,199,80,0.25)] transition-all cursor-pointer text-xs mb-8 hover:scale-[1.02] active:scale-[0.98]"
         >
           {actionIcon}
           {actionText}
@@ -67,12 +67,12 @@ export function RichEmptyState({
 
       {/* Feature Highlights Grid */}
       {features && features.length > 0 && (
-        <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-slate-100 text-left">
+        <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-[#2E2E2E] text-left">
           {features.map((f, i) => (
-            <div key={i} className="bg-slate-50/80 border border-slate-100 rounded-xl p-3.5 hover:bg-slate-50 transition-colors">
+            <div key={i} className="bg-[#161616] border border-[#2E2E2E] hover:border-[#3E3F3E] rounded-xl p-4 transition-all hover:bg-[#1a1a1a]">
               <div className="text-base mb-1.5">{f.icon}</div>
-              <h4 className="text-xs font-bold text-slate-800 mb-0.5">{f.title}</h4>
-              <p className="text-[11px] text-slate-400 leading-normal">{f.desc}</p>
+              <h4 className="text-xs font-semibold text-[#F0F2F0] mb-1">{f.title}</h4>
+              <p className="text-[11px] text-[#7E7E7E] leading-normal">{f.desc}</p>
             </div>
           ))}
         </div>

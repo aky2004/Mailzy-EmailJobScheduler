@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signOut as firebaseSignOut,
+  updateProfile,
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { authApi } from '@/lib/api';
@@ -17,6 +18,7 @@ interface AuthContextValue {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateDisplayName: (name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,8 +66,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDbUser(null);
   };
 
+  const updateDisplayName = async (name: string) => {
+    if (!auth.currentUser) return;
+    await updateProfile(auth.currentUser, { displayName: name });
+    // Trigger re-render with updated name
+    setFirebaseUser({ ...auth.currentUser, displayName: name } as FirebaseUser);
+    if (dbUser) {
+      setDbUser({ ...dbUser, name });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ firebaseUser, dbUser, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ firebaseUser, dbUser, loading, signInWithGoogle, signOut, updateDisplayName }}>
       {children}
     </AuthContext.Provider>
   );

@@ -31,28 +31,27 @@ export default function LoginPage() {
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    // This is just UI, the user will add real logic later or already has it elsewhere.
-    // For now, we'll just show a toast since it's a UI update task.
-    toast.error('Email sign-in is not configured yet. Use Google.');
+    toast.error('Direct email sign-in is not configured. Use Google Sign-In.');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4fcf9]">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
+      <div className="min-h-screen flex items-center justify-center bg-[#060C06]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#54C750]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex w-full bg-[#f4fcf9] text-[#1e293b]">
-      {/* Background Gradient similar to mockup */}
+    <div className="min-h-screen flex w-full bg-[#060C06] text-[#F0F2F0] relative overflow-hidden selection:bg-[#54C750]/30 selection:text-[#54C750]">
+      {/* High-tech ambient background glow */}
       <div 
-        className="absolute top-0 left-0 w-full h-full opacity-40 pointer-events-none"
+        className="absolute inset-0 pointer-events-none opacity-60"
         style={{
-          background: 'radial-gradient(circle at 0% 0%, #ccfbf1 0%, transparent 40%), radial-gradient(circle at 100% 50%, #dcfce7 0%, transparent 40%)'
+          background: 'radial-gradient(circle at 15% 20%, rgba(84, 199, 80, 0.12) 0%, transparent 45%), radial-gradient(circle at 85% 75%, rgba(84, 199, 80, 0.08) 0%, transparent 50%)'
         }}
       />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e1e1e0a_1px,transparent_1px),linear-gradient(to_bottom,#1e1e1e0a_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
       <div className="flex w-full max-w-7xl mx-auto z-10 p-6 md:p-12 items-center justify-center lg:justify-between flex-col lg:flex-row gap-12">
         
@@ -60,39 +59,40 @@ export default function LoginPage() {
         <div className="flex-1 max-w-xl text-left hidden lg:block">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-500 text-white shadow-lg shadow-emerald-500/30">
-              <Mail className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-[#54C750] text-[#060C06] font-black shadow-lg shadow-[#54C750]/25">
+              <Mail className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <span className="text-2xl font-bold text-slate-800">mailZy</span>
+            <span className="text-2xl font-black tracking-tight text-[#F0F2F0]">mailZy</span>
           </div>
           
-          <h1 className="text-6xl font-black tracking-tight leading-[1.1] mb-6 text-slate-900">
+          <h1 className="text-6xl font-black tracking-tight leading-[1.08] mb-6 text-[#F0F2F0]">
             Email<br/>
             Scheduling<br/>
-            <span className="text-emerald-500">Perfected.</span>
+            <span className="text-[#54C750] drop-shadow-[0_0_20px_rgba(84,199,80,0.35)]">Perfected.</span>
           </h1>
           
-          <p className="text-lg text-slate-600 mb-12 max-w-lg leading-relaxed">
-            Experience high-performance email job management with BullMQ, Redis, and a sleek dashboard designed for modern engineering teams.
+          <p className="text-lg text-[#A8ACA8] mb-12 max-w-lg leading-relaxed font-normal">
+            High-performance email queue orchestration with BullMQ, Redis, and real per-user SMTP delivery in a sleek dark console.
           </p>
 
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                <Zap className="w-5 h-5 text-emerald-500" />
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#1E1E1E]/80 border border-[#3E3F3E]/80 shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-[#54C750]/15 border border-[#54C750]/30 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-[#54C750]" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">Ultra Fast</p>
-                <p className="text-xs text-slate-500">Redis-powered throughput</p>
+                <p className="text-sm font-bold text-[#F0F2F0]">Ultra Fast</p>
+                <p className="text-xs text-[#A8ACA8]">Redis-powered throughput</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                <Shield className="w-5 h-5 text-emerald-500" />
+
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#1E1E1E]/80 border border-[#3E3F3E]/80 shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-[#54C750]/15 border border-[#54C750]/30 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-[#54C750]" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">Job Safety</p>
-                <p className="text-xs text-slate-500">Persistent queue recovery</p>
+                <p className="text-sm font-bold text-[#F0F2F0]">AES-256 Vault</p>
+                <p className="text-xs text-[#A8ACA8]">Encrypted SMTP secrets</p>
               </div>
             </div>
           </div>
@@ -100,64 +100,64 @@ export default function LoginPage() {
 
         {/* Right Column: Login Card */}
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-[32px] p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-slate-100">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h2>
-              <p className="text-sm text-slate-500">Enter your credentials to access the console</p>
+          <div className="bg-[#1E1E1E] rounded-[32px] p-8 md:p-10 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.8)] border border-[#3E3F3E]">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-[#F0F2F0] mb-2 tracking-tight">Welcome Back</h2>
+              <p className="text-sm text-[#A8ACA8]">Access your high-speed dispatch console</p>
             </div>
 
-            <form onSubmit={handleEmailSignIn} className="space-y-6">
-              <div className="space-y-5">
+            <form onSubmit={handleEmailSignIn} className="space-y-5">
+              <div className="space-y-4">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-slate-400" />
+                    <Mail className="h-4 w-4 text-[#5B5B5B]" />
                   </div>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-11 pr-4 py-3.5 bg-transparent border-b border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors sm:text-sm"
-                    placeholder="Email Address"
+                    className="block w-full pl-11 pr-4 py-3 bg-[#262626] border border-[#3E3F3E] rounded-xl text-[#F0F2F0] placeholder-[#5B5B5B] focus:outline-none focus:border-[#54C750] focus:ring-1 focus:ring-[#54C750] transition-all text-sm"
+                    placeholder="Email address"
                   />
                 </div>
                 
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-slate-400" />
+                    <Lock className="h-4 w-4 text-[#5B5B5B]" />
                   </div>
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-11 pr-4 py-3.5 bg-transparent border-b border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors sm:text-sm"
+                    className="block w-full pl-11 pr-4 py-3 bg-[#262626] border border-[#3E3F3E] rounded-xl text-[#F0F2F0] placeholder-[#5B5B5B] focus:outline-none focus:border-[#54C750] focus:ring-1 focus:ring-[#54C750] transition-all text-sm"
                     placeholder="Password"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm py-2">
+              <div className="flex items-center justify-between text-xs py-1">
                 <button 
                   type="button" 
                   onClick={() => setKeepSignedIn(!keepSignedIn)}
-                  className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+                  className="flex items-center gap-2 text-[#A8ACA8] hover:text-[#F0F2F0] transition-colors cursor-pointer"
                 >
                   {keepSignedIn ? (
-                    <CheckSquare className="w-4 h-4 text-emerald-500" />
+                    <CheckSquare className="w-4 h-4 text-[#54C750]" />
                   ) : (
-                    <Square className="w-4 h-4 text-slate-300" />
+                    <Square className="w-4 h-4 text-[#5B5B5B]" />
                   )}
-                  Keep me signed in
+                  Remember me
                 </button>
-                <a href="#" className="font-semibold text-emerald-500 hover:text-emerald-600 transition-colors">
-                  Forgot?
+                <a href="#" className="font-semibold text-[#54C750] hover:text-[#46af42] transition-colors">
+                  Forgot password?
                 </a>
               </div>
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-4 px-4 border border-transparent rounded-2xl shadow-lg shadow-emerald-500/25 text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl shadow-lg shadow-[#54C750]/20 text-sm font-bold text-[#060C06] bg-[#54C750] hover:bg-[#46af42] focus:outline-none focus:ring-2 focus:ring-[#54C750] transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 Sign In to mailZy <ArrowRight className="w-4 h-4 ml-1" />
               </button>
@@ -166,18 +166,18 @@ export default function LoginPage() {
             <div className="mt-8">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-[#3E3F3E]" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                  <span className="bg-white px-4 text-slate-400 font-medium">Or continue with</span>
+                  <span className="bg-[#1E1E1E] px-3 text-[#5B5B5B] font-semibold">Or continue with</span>
                 </div>
               </div>
 
-              <div className="mt-8 flex justify-center">
+              <div className="mt-6 flex justify-center">
                 <button
                   onClick={handleGoogleSignIn}
                   type="button"
-                  className="flex w-full items-center justify-center gap-3 py-3.5 px-4 border border-slate-200 rounded-2xl bg-white hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  className="flex w-full items-center justify-center gap-3 py-3.5 px-4 border border-[#3E3F3E] rounded-xl bg-[#282828] hover:bg-[#323232] text-[#F0F2F0] transition-colors focus:outline-none focus:ring-2 focus:ring-[#54C750] cursor-pointer"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24">
                     <path
@@ -197,17 +197,14 @@ export default function LoginPage() {
                       fill="#EA4335"
                     />
                   </svg>
-                  <span className="text-sm font-semibold text-slate-700">Google</span>
+                  <span className="text-sm font-semibold text-[#F0F2F0]">Continue with Google</span>
                 </button>
               </div>
             </div>
 
-            <div className="mt-10 text-center">
-              <p className="text-sm text-slate-500">
-                Don&apos;t have an account?{' '}
-                <a href="#" className="font-semibold text-emerald-500 hover:text-emerald-600 transition-colors">
-                  Sign Up
-                </a>
+            <div className="mt-8 text-center">
+              <p className="text-xs text-[#A8ACA8]">
+                Protected with Firebase Auth & AES-256 GCM
               </p>
             </div>
           </div>
